@@ -127,8 +127,8 @@ export default function HomePage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-16">
                 {[
                   { value: '500+', label: 'Students Taught' },
-                  { value: '15+', label: 'Years Experience' },
-                  { value: '95%', label: 'Success Rate' },
+                  { value: '2023', label: 'Founded' },
+                  { value: '100%', label: 'Success Rate' },
                   { value: '24/7', label: 'Support' },
                 ].map((stat) => (
                   <div key={stat.label} className="text-center">

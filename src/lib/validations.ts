@@ -16,9 +16,6 @@ export const uploadSchema = z.object({
   classNo: z.enum(['10', '11', '12'], {
     errorMap: () => ({ message: 'Class must be 10, 11, or 12' }),
   }),
-  stream: z.enum(['cbse', 'science', 'commerce', 'arts', 'all'], {
-    errorMap: () => ({ message: 'Invalid stream selected' }),
-  }),
   subject: z
     .string()
     .min(1, 'Subject is required')

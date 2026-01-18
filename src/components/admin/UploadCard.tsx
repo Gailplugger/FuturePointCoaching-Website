@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, FileText, X, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
@@ -11,7 +11,7 @@ import { Input, Select } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { uploadSchema, type UploadFormData } from '@/lib/validations';
 import { uploadPdf } from '@/lib/api';
-import { classes, streams } from '@/lib/constants';
+import { classes, subjectsByClass } from '@/lib/constants';
 import { formatFileSize } from '@/lib/utils';
 
 interface UploadCardProps {
@@ -31,11 +31,22 @@ export function UploadCard({ githubToken }: UploadCardProps) {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<UploadFormData>({
     resolver: zodResolver(uploadSchema),
   });
+
+  const selectedClass = useWatch({ control, name: 'classNo' });
+
+  const availableSubjects = useMemo(() => {
+    if (selectedClass && subjectsByClass[selectedClass]) {
+      return subjectsByClass[selectedClass];
+    }
+    return [];
+  }, [selectedClass]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const selectedFile = acceptedFiles[0];
@@ -103,7 +114,7 @@ export function UploadCard({ githubToken }: UploadCardProps) {
         fileBase64,
         file.name,
         data.classNo,
-        data.stream,
+        data.subject,
         data.subject,
         data.commitMessage || `Upload ${file.name}`,
         githubToken
@@ -190,24 +201,28 @@ export function UploadCard({ githubToken }: UploadCardProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Class"
-              options={classes}
               error={errors.classNo?.message}
-              {...register('classNo')}
-            />
+              {...register('classNo', {
+                onChange: () => setValue('subject', ''),
+              })}
+            >
+              <option value="">Select Class</option>
+              {classes.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </Select>
             <Select
-              label="Stream"
-              options={streams}
-              error={errors.stream?.message}
-              {...register('stream')}
-            />
+              label="Subject"
+              error={errors.subject?.message}
+              disabled={!selectedClass}
+              {...register('subject')}
+            >
+              <option value="">Select Subject</option>
+              {availableSubjects.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </Select>
           </div>
-
-          <Input
-            label="Subject"
-            placeholder="e.g., Mathematics, Physics, Biology"
-            error={errors.subject?.message}
-            {...register('subject')}
-          />
 
           <Input
             label="Commit Message (optional)"

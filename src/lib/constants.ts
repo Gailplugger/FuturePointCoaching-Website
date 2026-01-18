@@ -4,6 +4,8 @@ export const siteConfig = {
   description:
     'Expert Coaching for Competitive Success. Future Point Coaching Institute offers quality education for Class 10, 11, and 12 students.',
   url: 'https://futurepointcoaching.in',
+  founded: '2023',
+  successRate: '100%',
   contact: {
     address:
       'Ghanshyam Murliwala Complex, Near Maharana Pratap Chowk, Sadulpur, Churu - 331023',
@@ -57,6 +59,43 @@ export const classes = [
   { value: '10', label: 'Class 10' },
   { value: '11', label: 'Class 11' },
   { value: '12', label: 'Class 12' },
+];
+
+// Class-wise subjects
+export const subjectsByClass: Record<string, { value: string; label: string }[]> = {
+  '10': [
+    { value: 'maths', label: 'Maths' },
+    { value: 'science', label: 'Science' },
+    { value: 'sst', label: 'SST' },
+    { value: 'hindi', label: 'Hindi' },
+    { value: 'english', label: 'English' },
+  ],
+  '11': [
+    { value: 'maths', label: 'Maths' },
+    { value: 'physics', label: 'Physics' },
+    { value: 'chemistry', label: 'Chemistry' },
+    { value: 'biology', label: 'Biology' },
+    { value: 'english', label: 'English' },
+  ],
+  '12': [
+    { value: 'maths', label: 'Maths' },
+    { value: 'physics', label: 'Physics' },
+    { value: 'chemistry', label: 'Chemistry' },
+    { value: 'biology', label: 'Biology' },
+    { value: 'english', label: 'English' },
+  ],
+};
+
+// All subjects combined for general use
+export const allSubjects = [
+  { value: 'maths', label: 'Maths' },
+  { value: 'physics', label: 'Physics' },
+  { value: 'chemistry', label: 'Chemistry' },
+  { value: 'biology', label: 'Biology' },
+  { value: 'science', label: 'Science' },
+  { value: 'sst', label: 'SST' },
+  { value: 'hindi', label: 'Hindi' },
+  { value: 'english', label: 'English' },
 ];
 
 export const streams = [

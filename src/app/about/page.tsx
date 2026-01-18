@@ -158,10 +158,10 @@ export default function AboutPage() {
         <div className="container">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
             {[
-              { value: '2010', label: 'Founded' },
+              { value: '2023', label: 'Founded' },
               { value: '500+', label: 'Students Coached' },
-              { value: '15+', label: 'Years of Experience' },
-              { value: '95%', label: 'Success Rate' },
+              { value: '2+', label: 'Years of Excellence' },
+              { value: '100%', label: 'Success Rate' },
             ].map((stat, index) => (
               <SlideUp key={stat.label} delay={index * 0.1}>
                 <div className="text-center">

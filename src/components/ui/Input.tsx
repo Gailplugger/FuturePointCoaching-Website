@@ -103,11 +103,11 @@ Textarea.displayName = 'Textarea';
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   error?: string;
-  options: { value: string; label: string }[];
+  options?: { value: string; label: string }[];
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, label, error, options, id, ...props }, ref) => {
+  ({ className, label, error, options, children, id, ...props }, ref) => {
     const inputId = id || label?.toLowerCase().replace(/\s+/g, '-');
 
     return (
@@ -129,16 +129,23 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             error
               ? 'border-red-500 focus:ring-red-500'
               : 'border-white/10 hover:border-white/20',
+            props.disabled ? 'opacity-50 cursor-not-allowed' : '',
             className
           )}
           {...props}
         >
-          <option value="">Select {label}</option>
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
+          {children ? (
+            children
+          ) : (
+            <>
+              <option value="">Select {label}</option>
+              {options?.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </>
+          )}
         </select>
         {error && <p className="text-sm text-red-500">{error}</p>}
       </div>

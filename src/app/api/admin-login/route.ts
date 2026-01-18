@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
-const REPO_OWNER = process.env.REPO_OWNER || 'gailplugger';
-const REPO_NAME = process.env.REPO_NAME || 'FuturePointCoacing-WEBSITE';
+const REPO_OWNER = process.env.REPO_OWNER || 'Gailplugger';
+const REPO_NAME = process.env.REPO_NAME || 'FuturePointCoaching-Website';
 
 export async function POST(request: NextRequest) {
   try {

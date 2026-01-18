@@ -38,6 +38,7 @@ interface UploadResponse {
 interface NotesFile {
   name: string;
   path: string;
+  sha: string;
   classNo: string;
   stream: string;
   subject: string;
@@ -191,6 +192,29 @@ export async function removeAdmin(
 
   if (!response.ok) {
     throw new Error(data.error || 'Failed to remove admin');
+  }
+
+  return data;
+}
+
+export async function deleteNote(
+  filePath: string,
+  fileSha: string,
+  githubToken: string
+): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(`${apiUrl}/delete-note`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ filePath, fileSha, githubToken }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to delete note');
   }
 
   return data;

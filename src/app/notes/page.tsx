@@ -1,14 +1,18 @@
-import type { Metadata } from 'next';
-import { siteConfig } from '@/lib/constants';
+'use client';
+
+import { useState, useEffect } from 'react';
 import { NotesList } from '@/components/NotesList';
 import { PageTransition, SlideUp } from '@/components/motion';
 
-export const metadata: Metadata = {
-  title: 'Study Notes',
-  description: `Download free study notes and materials for Class 10, 11, and 12 from ${siteConfig.name}.`,
-};
-
 export default function NotesPage() {
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const token = sessionStorage.getItem('github_token');
+    const userData = sessionStorage.getItem('admin_user');
+    setIsAdmin(!!token && !!userData);
+  }, []);
+
   return (
     <PageTransition>
       {/* Hero Section */}
@@ -28,7 +32,7 @@ export default function NotesPage() {
             <SlideUp delay={0.2}>
               <p className="text-xl text-gray-300">
                 Access comprehensive study materials for all classes and subjects.
-                Filter by class, stream, and subject to find what you need.
+                Filter by class and subject to find what you need.
               </p>
             </SlideUp>
           </div>
@@ -38,7 +42,7 @@ export default function NotesPage() {
       {/* Notes List Section */}
       <section className="section-padding">
         <div className="container">
-          <NotesList />
+          <NotesList isAdmin={isAdmin} />
         </div>
       </section>
     </PageTransition>
