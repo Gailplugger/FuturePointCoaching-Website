@@ -12,8 +12,8 @@ export const siteConfig = {
     phone: '+91 8209429318',
     email: 'futurepointcoaching@gmail.com',
     hours: {
-      weekday: 'Mon–Sat: 9:00 AM - 8:00 PM',
-      weekend: 'Sunday: Closed',
+      weekday: 'Mon–Sat: 9:00 AM - 9:00 PM',
+      weekend: 'Sunday: OFF',
     },
   },
   social: {

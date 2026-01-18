@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const REPO_OWNER = process.env.REPO_OWNER || 'Gailplugger';
-const REPO_NAME = process.env.REPO_NAME || 'FuturePointCoaching-Website';
+const REPO_OWNER = process.env.REPO_OWNER || process.env.NEXT_PUBLIC_REPO_OWNER || '';
+const REPO_NAME = process.env.REPO_NAME || process.env.NEXT_PUBLIC_REPO_NAME || '';
 
 export async function POST(request: NextRequest) {
   try {
