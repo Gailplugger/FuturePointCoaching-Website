@@ -1,4 +1,8 @@
 {
-  "super_admins": ["Gailplugger"],
-  "admins": []
+  "super_admins": [
+    "Gailplugger"
+  ],
+  "admins": [
+    "Kartikgoyal007"
+  ]
 }
