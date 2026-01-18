@@ -1,37 +1,5 @@
-const jwt = require('jsonwebtoken');
-
-const JWT_SECRET = process.env.JWT_SECRET;
 const GH_USER = process.env.GH_USER;
 const GH_REPO = process.env.GH_REPO;
-
-// Helper to parse cookies
-function parseCookies(cookieHeader) {
-  const cookies = {};
-  if (cookieHeader) {
-    cookieHeader.split(';').forEach((cookie) => {
-      const [name, ...rest] = cookie.trim().split('=');
-      cookies[name] = rest.join('=');
-    });
-  }
-  return cookies;
-}
-
-// Verify admin token
-function verifyAdmin(event) {
-  const cookies = parseCookies(event.headers.cookie);
-  const token = cookies.admin_token;
-
-  if (!token) {
-    return { valid: false, error: 'Not authenticated' };
-  }
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    return { valid: true, user: decoded };
-  } catch (err) {
-    return { valid: false, error: 'Invalid token' };
-  }
-}
 
 exports.handler = async (event, context) => {
   const headers = {
@@ -53,16 +21,6 @@ exports.handler = async (event, context) => {
     };
   }
 
-  // Verify admin
-  const auth = verifyAdmin(event);
-  if (!auth.valid) {
-    return {
-      statusCode: 401,
-      headers,
-      body: JSON.stringify({ error: auth.error }),
-    };
-  }
-
   try {
     const { filePath, fileSha, githubToken } = JSON.parse(event.body);
 
@@ -71,6 +29,23 @@ exports.handler = async (event, context) => {
         statusCode: 400,
         headers,
         body: JSON.stringify({ error: 'File path, SHA, and GitHub token are required' }),
+      };
+    }
+
+    // Verify the GitHub token is valid by checking user
+    const userResponse = await fetch('https://api.github.com/user', {
+      headers: {
+        Authorization: `token ${githubToken}`,
+        Accept: 'application/vnd.github.v3+json',
+        'User-Agent': 'FuturePointCoaching-Admin',
+      },
+    });
+
+    if (!userResponse.ok) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ error: 'Invalid GitHub token' }),
       };
     }
 

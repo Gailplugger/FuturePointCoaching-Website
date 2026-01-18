@@ -27,6 +27,7 @@ export function NotesList({ isAdmin = false, onNoteDeleted }: NotesListProps) {
   const [showFilters, setShowFilters] = useState(false);
   const [deletingPath, setDeletingPath] = useState<string | null>(null);
   const [copiedPath, setCopiedPath] = useState<string | null>(null);
+  const [showToast, setShowToast] = useState(false);
 
   useEffect(() => {
     fetchNotes();
@@ -51,7 +52,11 @@ export function NotesList({ isAdmin = false, onNoteDeleted }: NotesListProps) {
     try {
       await navigator.clipboard.writeText(shareLink);
       setCopiedPath(note.path);
-      setTimeout(() => setCopiedPath(null), 2000);
+      setShowToast(true);
+      setTimeout(() => {
+        setCopiedPath(null);
+        setShowToast(false);
+      }, 2000);
     } catch (err) {
       // Fallback for older browsers
       const textArea = document.createElement('textarea');
@@ -61,7 +66,11 @@ export function NotesList({ isAdmin = false, onNoteDeleted }: NotesListProps) {
       document.execCommand('copy');
       document.body.removeChild(textArea);
       setCopiedPath(note.path);
-      setTimeout(() => setCopiedPath(null), 2000);
+      setShowToast(true);
+      setTimeout(() => {
+        setCopiedPath(null);
+        setShowToast(false);
+      }, 2000);
     }
   };
 
@@ -313,6 +322,23 @@ export function NotesList({ isAdmin = false, onNoteDeleted }: NotesListProps) {
       {filteredNotes.length > 0 && (
         <p className="text-center text-gray-400 text-sm">Showing {filteredNotes.length} of {notes.length} notes</p>
       )}
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {showToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50"
+          >
+            <div className="bg-green-500/90 backdrop-blur-sm text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-3">
+              <Check className="w-5 h-5" />
+              <span className="font-medium">Link copied to clipboard!</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

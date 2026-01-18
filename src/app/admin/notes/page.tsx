@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText,
   Trash2,
@@ -33,6 +33,7 @@ export default function AdminNotesPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState<NotesFile[]>([]);
+  const [showToast, setShowToast] = useState(false);
   const [filteredNotes, setFilteredNotes] = useState<NotesFile[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
@@ -115,9 +116,25 @@ export default function AdminNotesPage() {
     try {
       await navigator.clipboard.writeText(link);
       setCopiedPath(note.path);
-      setTimeout(() => setCopiedPath(null), 2000);
+      setShowToast(true);
+      setTimeout(() => {
+        setCopiedPath(null);
+        setShowToast(false);
+      }, 2000);
     } catch (err) {
-      alert('Failed to copy link');
+      // Fallback
+      const textArea = document.createElement('textarea');
+      textArea.value = link;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopiedPath(note.path);
+      setShowToast(true);
+      setTimeout(() => {
+        setCopiedPath(null);
+        setShowToast(false);
+      }, 2000);
     }
   };
 
@@ -316,6 +333,23 @@ export default function AdminNotesPage() {
           )}
         </div>
       </div>
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {showToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50"
+          >
+            <div className="bg-green-500/90 backdrop-blur-sm text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-3">
+              <Check className="w-5 h-5" />
+              <span className="font-medium">Link copied to clipboard!</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageTransition>
   );
 }
