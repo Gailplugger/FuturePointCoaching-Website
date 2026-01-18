@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Download, Search, Filter, X, FolderOpen, Share2, Check } from 'lucide-react';
+import { FileText, Download, Search, Filter, X, FolderOpen, Share2, Check, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui';
 import { Input, Select } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
