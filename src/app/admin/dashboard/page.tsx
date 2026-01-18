@@ -256,10 +256,16 @@ export default function AdminDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-4">
+                  <Link href="/admin/notes">
+                    <Button variant="primary">
+                      <FileText className="w-4 h-4 mr-2" />
+                      Manage Notes
+                    </Button>
+                  </Link>
                   <Link href="/notes">
                     <Button variant="outline">
                       <FileText className="w-4 h-4 mr-2" />
-                      View All Notes
+                      View Public Notes
                     </Button>
                   </Link>
                   {user?.isSuperAdmin && (

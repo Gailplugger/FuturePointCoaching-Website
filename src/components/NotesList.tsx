@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Download, Search, Filter, X, FolderOpen, Trash2, RefreshCw, ExternalLink } from 'lucide-react';
+import { FileText, Download, Search, Filter, X, FolderOpen, Trash2, RefreshCw, ExternalLink, Share2, Check, Copy } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui';
 import { Input, Select } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -26,6 +26,7 @@ export function NotesList({ isAdmin = false, onNoteDeleted }: NotesListProps) {
   const [selectedSubject, setSelectedSubject] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [deletingPath, setDeletingPath] = useState<string | null>(null);
+  const [copiedPath, setCopiedPath] = useState<string | null>(null);
 
   useEffect(() => {
     fetchNotes();
@@ -43,6 +44,26 @@ export function NotesList({ isAdmin = false, onNoteDeleted }: NotesListProps) {
       setLoading(false);
     }
   }
+
+  const copyShareLink = async (note: NotesFile) => {
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const shareLink = `${baseUrl}/notes?file=${encodeURIComponent(note.path)}`;
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setCopiedPath(note.path);
+      setTimeout(() => setCopiedPath(null), 2000);
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = shareLink;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopiedPath(note.path);
+      setTimeout(() => setCopiedPath(null), 2000);
+    }
+  };
 
   // Get subjects based on selected class
   const availableSubjects = useMemo(() => {
@@ -259,9 +280,15 @@ export function NotesList({ isAdmin = false, onNoteDeleted }: NotesListProps) {
                             <Download className="w-4 h-4 mr-1" />Download
                           </Button>
                         </a>
-                        <a href={note.htmlUrl} target="_blank" rel="noopener noreferrer">
-                          <Button variant="ghost" size="sm"><ExternalLink className="w-4 h-4" /></Button>
-                        </a>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => copyShareLink(note)}
+                          title="Copy share link"
+                          className="text-blue-400 hover:text-blue-500 hover:bg-blue-500/10"
+                        >
+                          {copiedPath === note.path ? <Check className="w-4 h-4 text-green-400" /> : <Share2 className="w-4 h-4" />}
+                        </Button>
                         {isAdmin && (
                           <Button
                             variant="ghost"

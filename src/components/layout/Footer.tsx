@@ -86,26 +86,23 @@ export function Footer() {
             © {currentYear} {siteConfig.name}. All rights reserved.
           </p>
 
-          {/* Developer Branding - MANDATORY */}
+          {/* Developer Branding - ASTRAFORENSICS */}
           <motion.a
             href={siteConfig.branding.developerUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-gray-500 hover:text-gray-300 transition-all group"
-            aria-label="AstraForensics website (opens in new tab)"
-            whileHover={{ y: -3, scale: 1.02 }}
-            transition={{ duration: 0.15 }}
+            className="group relative flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/20 hover:border-purple-500/50 transition-all duration-300"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.98 }}
           >
-            <span className="font-script text-sm italic opacity-80 group-hover:opacity-100">
-              Made with
+            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600/10 to-cyan-600/10 blur-xl group-hover:blur-2xl transition-all opacity-0 group-hover:opacity-100" />
+            <span className="relative text-xs text-gray-400 group-hover:text-gray-300">
+              Crafted by
             </span>
-            <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 animate-pulse" />
-            <span className="font-script text-sm italic opacity-80 group-hover:opacity-100">
-              by
-            </span>
-            <span className="text-xs font-semibold uppercase tracking-wider opacity-80 group-hover:opacity-100 group-hover:text-accent-orange">
+            <span className="relative font-bold text-sm bg-gradient-to-r from-purple-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent group-hover:from-purple-300 group-hover:via-cyan-300 group-hover:to-blue-300">
               ASTRAFORENSICS
             </span>
+            <div className="relative w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
           </motion.a>
         </div>
       </div>

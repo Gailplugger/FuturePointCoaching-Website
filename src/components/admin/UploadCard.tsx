@@ -5,7 +5,7 @@ import { useDropzone } from 'react-dropzone';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileText, X, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
+import { Upload, FileText, X, CheckCircle, AlertCircle, ExternalLink, Share2, Copy, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui';
 import { Input, Select } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -22,10 +22,13 @@ export function UploadCard({ githubToken }: UploadCardProps) {
   const [file, setFile] = useState<File | null>(null);
   const [fileBase64, setFileBase64] = useState<string>('');
   const [uploading, setUploading] = useState(false);
+  const [shareLink, setShareLink] = useState<string>('');
+  const [copied, setCopied] = useState(false);
   const [uploadResult, setUploadResult] = useState<{
     success: boolean;
     message: string;
     commitUrl?: string;
+    filePath?: string;
   } | null>(null);
 
   const {
@@ -109,6 +112,8 @@ export function UploadCard({ githubToken }: UploadCardProps) {
     try {
       setUploading(true);
       setUploadResult(null);
+      setShareLink('');
+      setCopied(false);
 
       const result = await uploadPdf(
         fileBase64,
@@ -120,10 +125,16 @@ export function UploadCard({ githubToken }: UploadCardProps) {
         githubToken
       );
 
+      // Generate shareable link
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const generatedShareLink = `${baseUrl}/notes?file=${encodeURIComponent(result.file.path)}`;
+      setShareLink(generatedShareLink);
+
       setUploadResult({
         success: true,
         message: result.message,
         commitUrl: result.commit.url,
+        filePath: result.file.path,
       });
 
       // Reset form
@@ -267,6 +278,32 @@ export function UploadCard({ githubToken }: UploadCardProps) {
                       View Commit
                       <ExternalLink className="w-3 h-3" />
                     </a>
+                  )}
+                  {/* Share Link */}
+                  {shareLink && (
+                    <div className="mt-3 p-3 bg-navy-800/50 rounded-lg">
+                      <p className="text-xs text-gray-400 mb-2">📎 Shareable Link:</p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={shareLink}
+                          readOnly
+                          className="flex-1 text-xs bg-navy-900/50 border border-white/10 rounded px-2 py-1.5 text-gray-300"
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={async () => {
+                            await navigator.clipboard.writeText(shareLink);
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                          }}
+                        >
+                          {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                        </Button>
+                      </div>
+                    </div>
                   )}
                 </div>
               </motion.div>
