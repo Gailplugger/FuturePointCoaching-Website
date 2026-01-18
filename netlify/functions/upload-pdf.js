@@ -1,41 +1,5 @@
-const jwt = require('jsonwebtoken');
-
-const JWT_SECRET = process.env.JWT_SECRET;
 const GH_USER = process.env.GH_USER;
 const GH_REPO = process.env.GH_REPO;
-
-// Shared session store (Note: In serverless, this will be recreated per invocation)
-// For production, use a shared store like Redis or encrypted cookie
-let sessions = new Map();
-
-// Helper to parse cookies
-function parseCookies(cookieHeader) {
-  const cookies = {};
-  if (cookieHeader) {
-    cookieHeader.split(';').forEach((cookie) => {
-      const [name, ...rest] = cookie.trim().split('=');
-      cookies[name] = rest.join('=');
-    });
-  }
-  return cookies;
-}
-
-// Helper to verify JWT and get session
-function verifySession(event) {
-  const cookies = parseCookies(event.headers.cookie || event.headers.Cookie);
-  const token = cookies.fp_admin;
-
-  if (!token) {
-    return { error: 'No authentication token provided', status: 401 };
-  }
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    return { decoded, token };
-  } catch (err) {
-    return { error: 'Invalid or expired token', status: 401 };
-  }
-}
 
 // Sanitize filename
 function sanitizeFilename(filename) {
@@ -74,8 +38,8 @@ function validateInputs(data) {
     // Check file size (base64 is ~33% larger than original)
     const sizeInBytes = (data.fileBase64.length * 3) / 4;
     const sizeInMB = sizeInBytes / (1024 * 1024);
-    if (sizeInMB > 20) {
-      errors.push('File size must be less than 20MB');
+    if (sizeInMB > 50) {
+      errors.push('File size must be less than 50MB');
     }
   }
 
@@ -85,14 +49,13 @@ function validateInputs(data) {
 exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Cookie',
+    'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json',
   };
 
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers, body: '' };
+    return { statusCode: 200, headers, body: '' };
   }
 
   if (event.httpMethod !== 'POST') {
@@ -104,20 +67,55 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Verify authentication
-    const authResult = verifySession(event);
-    if (authResult.error) {
+    // Parse request body
+    if (!event.body) {
       return {
-        statusCode: authResult.status,
+        statusCode: 400,
         headers,
-        body: JSON.stringify({ error: authResult.error }),
+        body: JSON.stringify({ error: 'Request body is required' }),
       };
     }
 
-    const { decoded } = authResult;
+    let data;
+    try {
+      data = JSON.parse(event.body);
+    } catch (parseError) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Invalid JSON in request body' }),
+      };
+    }
 
-    // Parse request body
-    const data = JSON.parse(event.body || '{}');
+    const { fileBase64, fileName, classNo, stream, subject, commitMessage, githubToken } = data;
+
+    // Validate GitHub token
+    if (!githubToken) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'GitHub token is required' }),
+      };
+    }
+
+    // Verify the GitHub token is valid
+    const userResponse = await fetch('https://api.github.com/user', {
+      headers: {
+        Authorization: `token ${githubToken}`,
+        Accept: 'application/vnd.github.v3+json',
+        'User-Agent': 'FuturePointCoaching-Admin',
+      },
+    });
+
+    if (!userResponse.ok) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ error: 'Invalid GitHub token' }),
+      };
+    }
+
+    const githubUser = await userResponse.json();
 
     // Validate inputs
     const validationErrors = validateInputs(data);
@@ -126,17 +124,6 @@ exports.handler = async (event, context) => {
         statusCode: 400,
         headers,
         body: JSON.stringify({ errors: validationErrors }),
-      };
-    }
-
-    const { fileBase64, fileName, classNo, stream, subject, commitMessage, githubToken } = data;
-
-    // Use the provided GitHub token for this request
-    if (!githubToken) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: 'GitHub token required for upload' }),
       };
     }
 
@@ -169,7 +156,7 @@ exports.handler = async (event, context) => {
 
     // Prepare commit payload
     const commitPayload = {
-      message: commitMessage || `Upload ${fileName} by ${decoded.username}`,
+      message: commitMessage || `Upload ${fileName} by ${githubUser.login}`,
       content: fileBase64,
       branch: 'main',
     };
