@@ -1,0 +1,30 @@
+# Future Point Coaching Institute Sadulpur
+# https://futurepointcoaching.in
+# Made & Secured by AstraForensics
+
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://futurepointcoaching.in/sitemap.xml
+
+# Crawl-delay for polite crawling
+Crawl-delay: 1
+
+# Block admin pages from indexing
+Disallow: /admin/
+Disallow: /api/
+
+# Allow all assets
+Allow: /images/
+Allow: /*.css
+Allow: /*.js
+Allow: /*.png
+Allow: /*.jpg
+Allow: /*.jpeg
+Allow: /*.gif
+Allow: /*.svg
+Allow: /*.ico
+
+# Search Engine Verification
+# Google: your-verification-code

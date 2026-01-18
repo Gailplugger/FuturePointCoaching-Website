@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { MapPin, Phone, Mail, Clock, Heart } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, Shield } from 'lucide-react';
 import { siteConfig, navLinks } from '@/lib/constants';
 
 export function Footer() {
@@ -101,14 +101,7 @@ export function Footer() {
             
             {/* Made with love text */}
             <span className="relative text-xs text-gray-400 group-hover:text-gray-200 transition-colors duration-300 flex items-center gap-1.5">
-              Made with
-              <motion.span
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
-              >
-                <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
-              </motion.span>
-              by
+              Made & Secured by
             </span>
             
             {/* ASTRAFORENSICS text with glow */}
