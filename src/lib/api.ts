@@ -1,6 +1,8 @@
 import { getApiUrl } from './utils';
 
 const apiUrl = getApiUrl();
+const GH_USER = process.env.NEXT_PUBLIC_GH_USER || 'Gailplugger';
+const GH_REPO = process.env.NEXT_PUBLIC_GH_REPO || 'FuturePointCoaching-Website';
 
 interface ApiResponse<T = unknown> {
   success?: boolean;
@@ -110,30 +112,78 @@ export async function uploadPdf(
   commitMessage: string,
   githubToken: string
 ): Promise<UploadResponse> {
-  const response = await fetch(`${apiUrl}/upload-pdf`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-    body: JSON.stringify({
-      fileBase64,
-      fileName,
-      classNo,
-      stream,
-      subject,
-      commitMessage,
-      githubToken,
-    }),
-  });
+  // Sanitize filename and subject
+  const sanitize = (str: string) => str.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/__+/g, '_').toLowerCase();
+  const sanitizedSubject = sanitize(subject);
+  const sanitizedFileName = sanitize(fileName);
+  const filePath = `notes/class-${classNo}/${stream.toLowerCase()}/${sanitizedSubject}/${sanitizedFileName}`;
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error || data.errors?.join(', ') || 'Upload failed');
+  // Check if file exists (to get SHA for update)
+  let existingSha: string | undefined;
+  try {
+    const existingResponse = await fetch(
+      `https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${filePath}`,
+      {
+        headers: {
+          Authorization: `token ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'FuturePointCoaching-Admin',
+        },
+      }
+    );
+    if (existingResponse.ok) {
+      const existingFile = await existingResponse.json();
+      existingSha = existingFile.sha;
+    }
+  } catch {
+    // File doesn't exist, that's fine
   }
 
-  return data;
+  // Upload directly to GitHub
+  const payload: Record<string, string> = {
+    message: commitMessage || `Upload ${fileName}`,
+    content: fileBase64,
+    branch: 'main',
+  };
+  if (existingSha) {
+    payload.sha = existingSha;
+  }
+
+  const uploadResponse = await fetch(
+    `https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${filePath}`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `token ${githubToken}`,
+        Accept: 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'FuturePointCoaching-Admin',
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!uploadResponse.ok) {
+    const errorData = await uploadResponse.json();
+    throw new Error(errorData.message || 'Failed to upload file to GitHub');
+  }
+
+  const result = await uploadResponse.json();
+
+  return {
+    success: true,
+    message: existingSha ? 'File updated successfully' : 'File uploaded successfully',
+    file: {
+      path: result.content.path,
+      sha: result.content.sha,
+      downloadUrl: result.content.download_url,
+      htmlUrl: result.content.html_url,
+    },
+    commit: {
+      sha: result.commit.sha,
+      url: result.commit.html_url,
+    },
+  };
 }
 
 export async function listNotes(): Promise<NotesResponse> {

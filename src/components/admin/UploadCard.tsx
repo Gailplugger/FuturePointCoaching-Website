@@ -62,10 +62,10 @@ export function UploadCard({ githubToken }: UploadCardProps) {
         return;
       }
 
-      if (selectedFile.size > 20 * 1024 * 1024) {
+      if (selectedFile.size > 50 * 1024 * 1024) {
         setUploadResult({
           success: false,
-          message: 'File size must be less than 20MB',
+          message: 'File size must be less than 50MB',
         });
         return;
       }
@@ -91,7 +91,7 @@ export function UploadCard({ githubToken }: UploadCardProps) {
       'application/pdf': ['.pdf'],
     },
     maxFiles: 1,
-    maxSize: 20 * 1024 * 1024,
+    maxSize: 50 * 1024 * 1024,
   });
 
   const removeFile = () => {
