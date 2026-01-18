@@ -1,18 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { NotesList } from '@/components/NotesList';
 import { PageTransition, SlideUp } from '@/components/motion';
 
 export default function NotesPage() {
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    const token = sessionStorage.getItem('github_token');
-    const userData = sessionStorage.getItem('admin_user');
-    setIsAdmin(!!token && !!userData);
-  }, []);
-
   return (
     <PageTransition>
       {/* Hero Section */}
@@ -42,7 +33,7 @@ export default function NotesPage() {
       {/* Notes List Section */}
       <section className="section-padding">
         <div className="container">
-          <NotesList isAdmin={isAdmin} />
+          <NotesList />
         </div>
       </section>
     </PageTransition>

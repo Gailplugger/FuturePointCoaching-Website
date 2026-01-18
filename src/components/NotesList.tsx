@@ -2,22 +2,17 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Download, Search, Filter, X, FolderOpen, Trash2, RefreshCw, ExternalLink, Share2, Check, Copy } from 'lucide-react';
+import { FileText, Download, Search, Filter, X, FolderOpen, Share2, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui';
 import { Input, Select } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { SectionLoader } from '@/components/ui/Loading';
-import { listNotes, deleteNote, type NotesFile } from '@/lib/api';
+import { listNotes, type NotesFile } from '@/lib/api';
 import { classes, subjectsByClass } from '@/lib/constants';
 import { formatFileSize } from '@/lib/utils';
 
-interface NotesListProps {
-  isAdmin?: boolean;
-  onNoteDeleted?: () => void;
-}
-
-export function NotesList({ isAdmin = false, onNoteDeleted }: NotesListProps) {
+export function NotesList() {
   const [notes, setNotes] = useState<NotesFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +20,6 @@ export function NotesList({ isAdmin = false, onNoteDeleted }: NotesListProps) {
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [deletingPath, setDeletingPath] = useState<string | null>(null);
   const [copiedPath, setCopiedPath] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
 
@@ -119,25 +113,6 @@ export function NotesList({ isAdmin = false, onNoteDeleted }: NotesListProps) {
     setSearchQuery('');
     setSelectedClass('');
     setSelectedSubject('');
-  };
-
-  const handleDelete = async (note: NotesFile) => {
-    if (!confirm(`Are you sure you want to delete "${note.name}"?`)) return;
-    const githubToken = sessionStorage.getItem('github_token');
-    if (!githubToken) {
-      alert('Please login again to delete notes');
-      return;
-    }
-    try {
-      setDeletingPath(note.path);
-      await deleteNote(note.path, note.sha, githubToken);
-      setNotes(prev => prev.filter(n => n.path !== note.path));
-      onNoteDeleted?.();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete note');
-    } finally {
-      setDeletingPath(null);
-    }
   };
 
   const hasActiveFilters = searchQuery || selectedClass || selectedSubject;
@@ -298,17 +273,6 @@ export function NotesList({ isAdmin = false, onNoteDeleted }: NotesListProps) {
                         >
                           {copiedPath === note.path ? <Check className="w-4 h-4 text-green-400" /> : <Share2 className="w-4 h-4" />}
                         </Button>
-                        {isAdmin && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(note)}
-                            disabled={deletingPath === note.path}
-                            className="text-red-400 hover:text-red-500 hover:bg-red-500/10"
-                          >
-                            {deletingPath === note.path ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                          </Button>
-                        )}
                       </div>
                     </motion.div>
                   ))}
