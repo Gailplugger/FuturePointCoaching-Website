@@ -91,18 +91,40 @@ export function Footer() {
             href={siteConfig.branding.developerUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="group relative flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/20 hover:border-purple-500/50 transition-all duration-300"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.98 }}
+            className="group relative flex items-center gap-3 px-5 py-2.5 rounded-full bg-gradient-to-r from-purple-950/50 via-indigo-950/50 to-cyan-950/50 border border-purple-500/30 hover:border-cyan-400/60 transition-all duration-500 overflow-hidden"
+            whileHover={{ scale: 1.08, boxShadow: '0 0 30px rgba(139, 92, 246, 0.3)' }}
+            whileTap={{ scale: 0.95 }}
           >
-            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600/10 to-cyan-600/10 blur-xl group-hover:blur-2xl transition-all opacity-0 group-hover:opacity-100" />
-            <span className="relative text-xs text-gray-400 group-hover:text-gray-300">
-              Crafted by
+            {/* Animated background glow */}
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-600/0 via-cyan-500/20 to-purple-600/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 via-cyan-400 to-blue-600 rounded-full blur-xl opacity-0 group-hover:opacity-30 transition-all duration-500 animate-pulse" />
+            
+            {/* Made with love text */}
+            <span className="relative text-xs text-gray-400 group-hover:text-gray-200 transition-colors duration-300 flex items-center gap-1.5">
+              Made with
+              <motion.span
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
+              >
+                <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
+              </motion.span>
+              by
             </span>
-            <span className="relative font-bold text-sm bg-gradient-to-r from-purple-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent group-hover:from-purple-300 group-hover:via-cyan-300 group-hover:to-blue-300">
+            
+            {/* ASTRAFORENSICS text with glow */}
+            <span className="relative font-black text-sm tracking-wider bg-gradient-to-r from-purple-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(139,92,246,0.5)] group-hover:drop-shadow-[0_0_20px_rgba(34,211,238,0.8)] transition-all duration-500" style={{ fontFamily: 'Inter, system-ui, sans-serif', letterSpacing: '0.1em' }}>
               ASTRAFORENSICS
             </span>
-            <div className="relative w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+            
+            {/* Animated dot indicator */}
+            <motion.div 
+              className="relative w-2 h-2 rounded-full bg-gradient-to-r from-cyan-400 to-purple-400"
+              animate={{ 
+                boxShadow: ['0 0 5px #22d3ee', '0 0 15px #22d3ee', '0 0 5px #22d3ee'],
+                scale: [1, 1.2, 1]
+              }}
+              transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+            />
           </motion.a>
         </div>
       </div>

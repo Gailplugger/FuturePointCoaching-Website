@@ -120,6 +120,7 @@ exports.handler = async (event, context) => {
       return {
         name: file.name,
         path: file.path,
+        sha: file.sha,
         classNo: pathParts[1]?.replace('class-', '') || '',
         stream: pathParts[2] || '',
         subject: pathParts[3] || '',
