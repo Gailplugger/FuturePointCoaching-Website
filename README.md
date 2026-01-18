@@ -87,10 +87,10 @@ A modern, production-ready website for Future Point Coaching Institute built wit
    Create a `.env.local` file:
    ```env
    JWT_SECRET=your-super-secret-jwt-key-at-least-32-characters
-   REPO_OWNER=your-github-username
-   REPO_NAME=future-point-site
-   NEXT_PUBLIC_REPO_OWNER=your-github-username
-   NEXT_PUBLIC_REPO_NAME=future-point-site
+   GH_USER=your-github-username
+   GH_REPO=future-point-site
+   NEXT_PUBLIC_GH_USER=your-github-username
+   NEXT_PUBLIC_GH_REPO=future-point-site
    ```
 
 4. **Run development server**
@@ -121,8 +121,8 @@ A modern, production-ready website for Future Point Coaching Institute built wit
    
    In Netlify dashboard → Site settings → Environment variables:
    - `JWT_SECRET`: A strong random string (32+ characters)
-   - `REPO_OWNER`: Your GitHub username or organization
-   - `REPO_NAME`: Repository name
+   - `GH_USER`: Your GitHub username or organization
+   - `GH_REPO`: Repository name
 
 4. **Deploy**
    

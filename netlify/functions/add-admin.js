@@ -1,8 +1,8 @@
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET;
-const REPO_OWNER = process.env.REPO_OWNER;
-const REPO_NAME = process.env.REPO_NAME;
+const GH_USER = process.env.GH_USER;
+const GH_REPO = process.env.GH_REPO;
 
 // Helper to parse cookies
 function parseCookies(cookieHeader) {
@@ -109,7 +109,7 @@ exports.handler = async (event, context) => {
 
     // Fetch current admins.json
     const adminsResponse = await fetch(
-      `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/admins/admins.json`,
+      `https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/admins/admins.json`,
       {
         headers: {
           Authorization: `token ${githubToken}`,
@@ -150,7 +150,7 @@ exports.handler = async (event, context) => {
 
     // Commit updated admins.json
     const updateResponse = await fetch(
-      `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/admins/admins.json`,
+      `https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/admins/admins.json`,
       {
         method: 'PUT',
         headers: {

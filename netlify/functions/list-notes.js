@@ -1,9 +1,9 @@
-const REPO_OWNER = process.env.REPO_OWNER;
-const REPO_NAME = process.env.REPO_NAME;
+const GH_USER = process.env.GH_USER;
+const GH_REPO = process.env.GH_REPO;
 
 // Recursively fetch directory contents
 async function fetchDirectoryContents(path, token) {
-  const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}`;
+  const url = `https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${path}`;
   
   const headers = {
     Accept: 'application/vnd.github.v3+json',

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
-const REPO_OWNER = process.env.REPO_OWNER || process.env.NEXT_PUBLIC_REPO_OWNER || '';
-const REPO_NAME = process.env.REPO_NAME || process.env.NEXT_PUBLIC_REPO_NAME || '';
+const GH_USER = process.env.GH_USER || process.env.NEXT_PUBLIC_GH_USER || '';
+const GH_REPO = process.env.GH_REPO || process.env.NEXT_PUBLIC_GH_REPO || '';
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     } catch {
       // Fallback: fetch from GitHub if local file not found
       const adminsResponse = await fetch(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/admins/admins.json`,
+        `https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/admins/admins.json`,
         {
           headers: {
             Authorization: `token ${token}`,

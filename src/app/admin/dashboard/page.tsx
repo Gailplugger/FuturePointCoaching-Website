@@ -271,7 +271,7 @@ export default function AdminDashboardPage() {
                     </Link>
                   )}
                   <a
-                    href={`https://github.com/${process.env.NEXT_PUBLIC_REPO_OWNER}/${process.env.NEXT_PUBLIC_REPO_NAME}`}
+                    href={`https://github.com/${process.env.NEXT_PUBLIC_GH_USER}/${process.env.NEXT_PUBLIC_GH_REPO}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

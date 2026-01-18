@@ -13,8 +13,8 @@ global.fetch = jest.fn();
 
 // Mock environment variables
 process.env.JWT_SECRET = 'test-jwt-secret-key-for-testing';
-process.env.REPO_OWNER = 'test-owner';
-process.env.REPO_NAME = 'test-repo';
+process.env.GH_USER = 'test-owner';
+process.env.GH_REPO = 'test-repo';
 
 describe('Netlify Functions', () => {
   beforeEach(() => {

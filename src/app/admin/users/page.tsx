@@ -51,8 +51,8 @@ export default function AdminUsersPage() {
 
   async function fetchAdmins(token: string) {
     try {
-      const repoOwner = process.env.NEXT_PUBLIC_REPO_OWNER;
-      const repoName = process.env.NEXT_PUBLIC_REPO_NAME;
+      const repoOwner = process.env.NEXT_PUBLIC_GH_USER;
+      const repoName = process.env.NEXT_PUBLIC_GH_REPO;
 
       const response = await fetch(
         `https://api.github.com/repos/${repoOwner}/${repoName}/contents/admins/admins.json`,

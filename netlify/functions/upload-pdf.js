@@ -1,8 +1,8 @@
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET;
-const REPO_OWNER = process.env.REPO_OWNER;
-const REPO_NAME = process.env.REPO_NAME;
+const GH_USER = process.env.GH_USER;
+const GH_REPO = process.env.GH_REPO;
 
 // Shared session store (Note: In serverless, this will be recreated per invocation)
 // For production, use a shared store like Redis or encrypted cookie
@@ -149,7 +149,7 @@ exports.handler = async (event, context) => {
     let existingSha = null;
     try {
       const existingFileResponse = await fetch(
-        `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}`,
+        `https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${filePath}`,
         {
           headers: {
             Authorization: `token ${githubToken}`,
@@ -180,7 +180,7 @@ exports.handler = async (event, context) => {
 
     // Upload file via GitHub Contents API
     const uploadResponse = await fetch(
-      `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}`,
+      `https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${filePath}`,
       {
         method: 'PUT',
         headers: {
