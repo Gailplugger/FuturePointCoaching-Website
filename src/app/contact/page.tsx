@@ -68,18 +68,29 @@ export default function ContactPage() {
     setSubmitStatus(null);
 
     try {
-      // In production, this would send to a backend endpoint
-      // For now, we'll simulate a successful submission
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // You could integrate with email services like EmailJS, Formspree, or a custom backend
-      console.log('Form submitted:', data);
-
-      setSubmitStatus({
-        success: true,
-        message: 'Thank you for your message! We will get back to you soon.',
+      const response = await fetch('https://formspree.io/f/xjggyleq', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          name: data.name,
+          email: data.email,
+          phone: data.phone || 'Not provided',
+          message: data.message,
+        }),
       });
-      reset();
+
+      if (response.ok) {
+        setSubmitStatus({
+          success: true,
+          message: 'Thank you for your message! We will get back to you soon.',
+        });
+        reset();
+      } else {
+        throw new Error('Failed to send message');
+      }
     } catch (error) {
       setSubmitStatus({
         success: false,
