@@ -27,7 +27,7 @@ interface CommandOutput {
 
 export function AdminLogsTerminal({ className = '', defaultExpanded = true }: AdminLogsTerminalProps) {
   const [logs, setLogs] = useState<AdminLog[]>([]);
-  const [expanded, setExpanded] = useState(defaultExpanded);
+  const [expanded, setExpanded] = useState(true); // Always expanded
   const [fullscreen, setFullscreen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<AdminLog | null>(null);
   const [filter, setFilter] = useState<string>('all');
@@ -36,7 +36,7 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [commandOutputs, setCommandOutputs] = useState<CommandOutput[]>([]);
-  const [showCommandMode, setShowCommandMode] = useState(false);
+  const [showCommandMode, setShowCommandMode] = useState(true); // START IN COMMAND MODE
   const terminalRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
