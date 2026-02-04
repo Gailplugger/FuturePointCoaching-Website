@@ -28,6 +28,7 @@ import { PageLoader, SectionLoader } from '@/components/ui/Loading';
 import { listNotes, deleteNote, type NotesFile } from '@/lib/api';
 import { classes, subjectsByClass } from '@/lib/constants';
 import { formatFileSize } from '@/lib/utils';
+import { logDelete } from '@/lib/adminLogs';
 
 export default function AdminNotesPage() {
   const router = useRouter();
@@ -95,10 +96,17 @@ export default function AdminNotesPage() {
   const handleDelete = async (note: NotesFile) => {
     if (!confirm(`Are you sure you want to delete "${note.name}"?`)) return;
 
+    // Get current user for logging
+    const userData = sessionStorage.getItem('admin_user');
+    const currentUser = userData ? JSON.parse(userData).username : 'Unknown';
+
     try {
       setDeletingPath(note.path);
       await deleteNote(note.path, note.sha, githubToken);
       setNotes((prev) => prev.filter((n) => n.path !== note.path));
+      
+      // Log successful delete with full path
+      logDelete(currentUser, note.name, note.path);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete note');
     } finally {

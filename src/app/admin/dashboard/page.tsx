@@ -16,12 +16,15 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { UploadCard } from '@/components/admin/UploadCard';
+import { AdminLogsTerminal } from '@/components/admin/AdminLogsTerminal';
+import { ServerMaintenancePopup } from '@/components/admin/ServerMaintenancePopup';
 import { PageTransition, SlideUp, StaggerContainer, StaggerItem } from '@/components/motion';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { PageLoader } from '@/components/ui/Loading';
 import { adminLogout, listNotes, type User, type NotesFile } from '@/lib/api';
+import { logLogout, logSystem, logSession } from '@/lib/adminLogs';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -46,8 +49,17 @@ export default function AdminDashboardPage() {
       return;
     }
 
+    const parsedUser = JSON.parse(userData);
     setGithubToken(token);
-    setUser(JSON.parse(userData));
+    setUser(parsedUser);
+    
+    // Log session resume if returning to dashboard
+    const loginTime = sessionStorage.getItem('fp_login_time');
+    if (loginTime && Date.now() - parseInt(loginTime, 10) > 5000) {
+      // Only log resume if more than 5 seconds since login (avoid double logging)
+      logSession('resume', parsedUser.username);
+    }
+    
     fetchDashboardData();
     setLoading(false);
   }, [router]);
@@ -74,6 +86,9 @@ export default function AdminDashboardPage() {
 
   const handleLogout = async () => {
     try {
+      if (user?.username) {
+        logLogout(user.username);
+      }
       await adminLogout();
     } catch (err) {
       console.error('Logout error:', err);
@@ -287,7 +302,17 @@ export default function AdminDashboardPage() {
               </CardContent>
             </Card>
           </SlideUp>
+
+          {/* Admin Logs Terminal */}
+          <SlideUp delay={0.3}>
+            <div className="mt-8">
+              <AdminLogsTerminal />
+            </div>
+          </SlideUp>
         </main>
+
+        {/* Server Maintenance Popup */}
+        <ServerMaintenancePopup delayMs={5000} />
       </div>
     </PageTransition>
   );

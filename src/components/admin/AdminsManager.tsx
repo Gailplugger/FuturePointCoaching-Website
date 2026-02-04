@@ -11,11 +11,19 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { addAdminSchema, type AddAdminFormData } from '@/lib/validations';
 import { addAdmin, removeAdmin, type AdminsData } from '@/lib/api';
+import { logAdminAdd, logAdminRemove } from '@/lib/adminLogs';
 
 interface AdminsManagerProps {
   admins: AdminsData;
   githubToken: string;
   onUpdate: () => void;
+}
+
+// Helper to get current user
+function getCurrentUser(): string {
+  if (typeof window === 'undefined') return 'Unknown';
+  const userData = sessionStorage.getItem('admin_user');
+  return userData ? JSON.parse(userData).username : 'Unknown';
 }
 
 export function AdminsManager({ admins, githubToken, onUpdate }: AdminsManagerProps) {
@@ -47,6 +55,9 @@ export function AdminsManager({ admins, githubToken, onUpdate }: AdminsManagerPr
         message: response.message,
       });
 
+      // Log admin addition
+      logAdminAdd(getCurrentUser(), data.username, false);
+
       reset();
       onUpdate();
     } catch (err) {
@@ -74,6 +85,9 @@ export function AdminsManager({ admins, githubToken, onUpdate }: AdminsManagerPr
         success: true,
         message: response.message,
       });
+
+      // Log admin removal
+      logAdminRemove(getCurrentUser(), username);
 
       onUpdate();
     } catch (err) {

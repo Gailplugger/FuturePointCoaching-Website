@@ -13,6 +13,7 @@ import { uploadSchema, type UploadFormData } from '@/lib/validations';
 import { uploadPdf } from '@/lib/api';
 import { classes, subjectsByClass } from '@/lib/constants';
 import { formatFileSize } from '@/lib/utils';
+import { logUpload, logUploadError } from '@/lib/adminLogs';
 
 interface UploadCardProps {
   githubToken: string;
@@ -109,6 +110,11 @@ export function UploadCard({ githubToken }: UploadCardProps) {
       return;
     }
 
+    // Get current user for logging
+    const userData = sessionStorage.getItem('admin_user');
+    const currentUser = userData ? JSON.parse(userData).username : 'Unknown';
+    const fileSize = file.size;
+
     try {
       setUploading(true);
       setUploadResult(null);
@@ -137,11 +143,17 @@ export function UploadCard({ githubToken }: UploadCardProps) {
         filePath: result.file.path,
       });
 
+      // Log successful upload with file size
+      logUpload(currentUser, file.name, data.classNo, data.subject, fileSize);
+
       // Reset form
       setFile(null);
       setFileBase64('');
       reset();
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Upload failed';
+      // Log upload error with file size
+      logUploadError(currentUser, file.name, errorMessage, fileSize);
       setUploadResult({
         success: false,
         message: err instanceof Error ? err.message : 'Upload failed',

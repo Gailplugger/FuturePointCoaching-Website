@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,12 +12,19 @@ import { PageTransition, SlideUp } from '@/components/motion';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { logLogin, logSystem, logSession, fetchClientIP, logLoginAttempt } from '@/lib/adminLogs';
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [showToken, setShowToken] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [clientIP, setClientIP] = useState<string>('Detecting...');
+
+  // Fetch client IP on mount
+  useEffect(() => {
+    fetchClientIP().then(ip => setClientIP(ip));
+  }, []);
 
   const {
     register,
@@ -32,17 +39,34 @@ export default function AdminLoginPage() {
       setIsLoading(true);
       setError(null);
 
+      // Log login attempt
+      logSystem(`Login attempt initiated for ${data.username}`, 'info', `IP: ${clientIP}`);
+
       const response = await adminLogin(data.username, data.token);
 
       if (response.success) {
         // Store token in sessionStorage for subsequent API calls
         sessionStorage.setItem('github_token', data.token);
         sessionStorage.setItem('admin_user', JSON.stringify(response.user));
+        sessionStorage.setItem('fp_login_time', Date.now().toString());
+
+        // Log successful login with IP and details
+        logLogin(response.user.username, clientIP);
+        logSession('start', response.user.username);
+        logSystem(
+          `Admin panel access granted to ${response.user.username}`,
+          'success',
+          `Role: ${response.user.isSuperAdmin ? 'Super Admin' : 'Admin'} | IP: ${clientIP}`
+        );
 
         router.push('/admin/dashboard');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Login failed. Please try again.';
+      // Log failed login attempt with details
+      logLoginAttempt(data.username, false, clientIP, errorMessage);
+      logSystem(`Authentication rejected for ${data.username}`, 'error', `Reason: ${errorMessage} | IP: ${clientIP}`);
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
