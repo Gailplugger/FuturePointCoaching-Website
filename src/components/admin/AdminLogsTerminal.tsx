@@ -77,26 +77,47 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
     };
   }, []);
 
-  // Focus input when command mode is enabled
+  // Focus input when command mode is enabled - multiple attempts
   useEffect(() => {
     if (showCommandMode && inputRef.current) {
-      // Use setTimeout to ensure DOM is ready
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
+      // Multiple focus attempts to ensure it works
+      const focusInput = () => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.select();
+        }
+      };
+      
+      // Immediate focus
+      focusInput();
+      
+      // Delayed focus attempts
+      setTimeout(focusInput, 50);
+      setTimeout(focusInput, 150);
+      setTimeout(focusInput, 300);
     }
   }, [showCommandMode]);
 
-  // Keep focusing the input in command mode
+  // Continuous focus check when in command mode
   useEffect(() => {
-    if (showCommandMode) {
-      const interval = setInterval(() => {
-        if (inputRef.current && document.activeElement !== inputRef.current) {
-          inputRef.current.focus();
-        }
-      }, 500);
-      return () => clearInterval(interval);
-    }
+    if (!showCommandMode) return;
+    
+    const focusInput = () => {
+      if (inputRef.current && document.activeElement !== inputRef.current) {
+        inputRef.current.focus();
+      }
+    };
+    
+    // Check focus every 200ms
+    const interval = setInterval(focusInput, 200);
+    
+    // Also focus on window focus
+    window.addEventListener('focus', focusInput);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', focusInput);
+    };
   }, [showCommandMode]);
 
   // Scroll to bottom when outputs change
@@ -964,14 +985,13 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
               <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
                 <div 
                   ref={terminalRef}
-                  className={`flex-1 bg-[#0d1117] font-mono text-[11px] overflow-y-auto p-3 cursor-text ${
+                  className={`flex-1 bg-[#0d1117] font-mono text-[11px] overflow-y-auto p-3 ${
                     fullscreen ? 'max-h-full' : 'max-h-[400px] min-h-[300px]'
-                  }`}
-                  onClick={(e) => {
-                    if (showCommandMode && inputRef.current) {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      inputRef.current.focus();
+                  } ${showCommandMode ? 'cursor-text' : ''}`}
+                  onMouseDown={(e) => {
+                    // Only focus if clicking on the terminal background, not on the input itself
+                    if (showCommandMode && inputRef.current && e.target === e.currentTarget) {
+                      setTimeout(() => inputRef.current?.focus(), 0);
                     }
                   }}
                 >
@@ -1015,38 +1035,58 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
 
                       {/* Input line */}
                       <div 
-                        className="flex items-center gap-2 pt-2 border-t border-white/5 sticky bottom-0 bg-[#0d1117] pb-1"
+                        className="flex items-center gap-2 pt-2 border-t border-white/5 sticky bottom-0 bg-[#0d1117] pb-2 z-50"
                         onClick={(e) => {
+                          e.preventDefault();
                           e.stopPropagation();
-                          inputRef.current?.focus();
+                          if (inputRef.current) {
+                            inputRef.current.focus();
+                            inputRef.current.click();
+                          }
                         }}
                       >
-                        <span className="text-green-500 select-none">root@futurepoint</span>
-                        <span className="text-gray-500 select-none">:</span>
-                        <span className="text-blue-400 select-none">~</span>
-                        <span className="text-gray-500 select-none">$</span>
+                        <span className="text-green-500 select-none pointer-events-none">root@futurepoint</span>
+                        <span className="text-gray-500 select-none pointer-events-none">:</span>
+                        <span className="text-blue-400 select-none pointer-events-none">~</span>
+                        <span className="text-gray-500 select-none pointer-events-none">$</span>
                         <input
                           ref={inputRef}
                           type="text"
                           value={commandInput}
-                          onChange={(e) => setCommandInput(e.target.value)}
-                          onKeyDown={handleKeyDown}
-                          onBlur={() => {
-                            // Re-focus after a short delay if still in command mode
-                            if (showCommandMode) {
-                              setTimeout(() => inputRef.current?.focus(), 10);
-                            }
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            setCommandInput(e.target.value);
                           }}
-                          className="flex-1 bg-transparent outline-none text-white caret-green-400 placeholder-gray-600 border-none focus:ring-0 focus:outline-none min-w-0"
+                          onKeyDown={(e) => {
+                            e.stopPropagation();
+                            handleKeyDown(e);
+                          }}
+                          onFocus={(e) => {
+                            e.stopPropagation();
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                          className="flex-1 bg-transparent text-white placeholder-gray-600 font-mono text-[11px]"
                           placeholder="Type a command... (try 'help')"
-                          autoFocus
+                          autoFocus={true}
                           spellCheck={false}
                           autoComplete="off"
                           autoCapitalize="off"
                           autoCorrect="off"
-                          style={{ WebkitAppearance: 'none' }}
+                          data-lpignore="true"
+                          data-form-type="other"
+                          style={{ 
+                            outline: 'none',
+                            border: 'none',
+                            boxShadow: 'none',
+                            WebkitAppearance: 'none',
+                            caretColor: '#22c55e',
+                            minWidth: '100px',
+                            width: '100%'
+                          }}
                         />
-                        <span className="animate-pulse text-green-400 select-none">▋</span>
+                        <span className="animate-pulse text-green-400 select-none pointer-events-none">▋</span>
                       </div>
                     </div>
                   ) : (
