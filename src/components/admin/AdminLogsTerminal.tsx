@@ -909,15 +909,19 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
             </div>
             
             <div className="flex items-center gap-1">
-              {/* Command Mode Toggle */}
+              {/* Command Mode Toggle - PROMINENT */}
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowCommandMode(!showCommandMode)}
-                className={`h-6 px-2 text-[10px] font-mono ${showCommandMode ? 'bg-green-500/30 text-green-400 ring-1 ring-green-500/50' : 'hover:bg-green-500/10'}`}
+                className={`h-7 px-3 text-xs font-bold font-mono border ${
+                  showCommandMode 
+                    ? 'bg-green-500/40 text-green-300 border-green-500 ring-2 ring-green-500/50 animate-pulse' 
+                    : 'bg-blue-500/20 text-blue-400 border-blue-500/50 hover:bg-blue-500/30 hover:border-blue-400'
+                }`}
                 title={showCommandMode ? 'Exit command mode (ESC)' : 'Enter command mode'}
               >
-                {showCommandMode ? '⌨️ EXIT' : '⌨️ CMD'}
+                {showCommandMode ? '🖥️ EXIT CMD' : '🖥️ TERMINAL'}
               </Button>
 
               {/* Filter dropdown - only show in log view */}
