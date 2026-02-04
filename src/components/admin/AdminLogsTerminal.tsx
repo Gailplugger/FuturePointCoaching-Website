@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Terminal, Trash2, Download, ChevronDown, ChevronUp, Maximize2, Minimize2, Monitor, Smartphone, Tablet, Globe, Clock, User, Server, Cpu, HardDrive, Wifi, MapPin, Shield, AlertTriangle, Info, CheckCircle, XCircle, Activity, Zap, Eye, Hash, Calendar, FileText, Lock, Unlock } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
@@ -17,6 +17,14 @@ interface AdminLogsTerminalProps {
   defaultExpanded?: boolean;
 }
 
+interface CommandOutput {
+  id: string;
+  command: string;
+  output: string[];
+  type: 'success' | 'error' | 'info' | 'warning';
+  timestamp: Date;
+}
+
 export function AdminLogsTerminal({ className = '', defaultExpanded = true }: AdminLogsTerminalProps) {
   const [logs, setLogs] = useState<AdminLog[]>([]);
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -24,7 +32,13 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
   const [selectedLog, setSelectedLog] = useState<AdminLog | null>(null);
   const [filter, setFilter] = useState<string>('all');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [commandInput, setCommandInput] = useState('');
+  const [commandHistory, setCommandHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [commandOutputs, setCommandOutputs] = useState<CommandOutput[]>([]);
+  const [showCommandMode, setShowCommandMode] = useState(false);
   const terminalRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Update current time every second
   useEffect(() => {
@@ -37,12 +51,12 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
     loadLogs();
     setLogs(getLogs());
 
-    const handleLogAdded = (event: CustomEvent<AdminLog>) => {
+    const handleLogAdded = () => {
       setLogs(getLogs());
       if (terminalRef.current) {
         setTimeout(() => {
           terminalRef.current?.scrollTo({
-            top: 0,
+            top: terminalRef.current.scrollHeight,
             behavior: 'smooth'
           });
         }, 100);
@@ -62,6 +76,620 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
       window.removeEventListener('adminLogsCleared', handleLogsCleared);
     };
   }, []);
+
+  // Focus input when command mode is enabled
+  useEffect(() => {
+    if (showCommandMode && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [showCommandMode]);
+
+  // Scroll to bottom when outputs change
+  useEffect(() => {
+    if (terminalRef.current && showCommandMode) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    }
+  }, [commandOutputs, showCommandMode]);
+
+  const addCommandOutput = (command: string, output: string[], type: CommandOutput['type'] = 'info') => {
+    const newOutput: CommandOutput = {
+      id: Date.now().toString(),
+      command,
+      output,
+      type,
+      timestamp: new Date()
+    };
+    setCommandOutputs(prev => [...prev, newOutput]);
+  };
+
+  // Process terminal commands
+  const processCommand = (cmd: string) => {
+    const trimmedCmd = cmd.trim().toLowerCase();
+    const parts = trimmedCmd.split(/\s+/);
+    const command = parts[0];
+    const args = parts.slice(1);
+
+    // Add to history
+    if (cmd.trim()) {
+      setCommandHistory(prev => [...prev, cmd]);
+    }
+    setHistoryIndex(-1);
+
+    switch (command) {
+      case 'help':
+      case '?':
+        addCommandOutput(cmd, [
+          '╔══════════════════════════════════════════════════════════════╗',
+          '║        🖥️  FUTURE POINT ADMIN TERMINAL - HELP               ║',
+          '╠══════════════════════════════════════════════════════════════╣',
+          '║  📋 LIST COMMANDS:                                           ║',
+          '║  ──────────────────────────────────────────────────────────  ║',
+          '║  ls / list          - List all recent activity               ║',
+          '║  ls logins          - Show all login events                  ║',
+          '║  ls uploads         - Show all upload events                 ║',
+          '║  ls errors          - Show all error events                  ║',
+          '║  ls users           - List all unique users                  ║',
+          '║  ls ips             - List all unique IP addresses           ║',
+          '║                                                              ║',
+          '║  🔍 DETAIL COMMANDS:                                         ║',
+          '║  ──────────────────────────────────────────────────────────  ║',
+          '║  dir <username>     - Show details for specific user         ║',
+          '║  dir <ip>           - Show details for specific IP           ║',
+          '║  show <log_id>      - Show full details of a log entry       ║',
+          '║                                                              ║',
+          '║  📊 INFO COMMANDS:                                           ║',
+          '║  ──────────────────────────────────────────────────────────  ║',
+          '║  stats              - Show statistics summary                ║',
+          '║  whoami             - Show current admin info                ║',
+          '║  uptime             - Show session uptime                    ║',
+          '║  date / time        - Show current date/time                 ║',
+          '║                                                              ║',
+          '║  🔎 SEARCH COMMANDS:                                         ║',
+          '║  ──────────────────────────────────────────────────────────  ║',
+          '║  find <keyword>     - Search logs for keyword                ║',
+          '║  grep <pattern>     - Search logs with pattern               ║',
+          '║  tail [n]           - Show last n logs (default: 10)         ║',
+          '║  head [n]           - Show first n logs (default: 10)        ║',
+          '║                                                              ║',
+          '║  ⚙️  UTILITY COMMANDS:                                        ║',
+          '║  ──────────────────────────────────────────────────────────  ║',
+          '║  export             - Export all logs to file                ║',
+          '║  clear / cls        - Clear terminal output                  ║',
+          '║  clearall           - Clear all logs (requires confirm)      ║',
+          '║  exit               - Exit command mode                      ║',
+          '║  help / ?           - Show this help message                 ║',
+          '╚══════════════════════════════════════════════════════════════╝',
+        ], 'info');
+        break;
+
+      case 'ls':
+      case 'list':
+        if (args[0] === 'logins' || args[0] === 'login') {
+          const logins = logs.filter(l => l.action === 'LOGIN');
+          if (logins.length === 0) {
+            addCommandOutput(cmd, ['⚠️ No login events found.'], 'warning');
+          } else {
+            const output = [
+              `🔐 Found ${logins.length} login event(s):`,
+              '═'.repeat(75),
+              '  #  │ TIME     │ USER            │ IP ADDRESS      │ LOCATION',
+              '─'.repeat(75),
+              ...logins.map((l, i) => 
+                `  ${(i + 1).toString().padStart(2)} │ ${formatTime(l.timestamp)} │ @${(l.user || 'unknown').padEnd(14)} │ ${(l.metadata?.ip || 'N/A').padEnd(15)} │ ${l.metadata?.location || 'Unknown'}`
+              ),
+              '═'.repeat(75),
+              `💡 Use "dir <username>" for detailed user info`
+            ];
+            addCommandOutput(cmd, output, 'success');
+          }
+        } else if (args[0] === 'uploads' || args[0] === 'upload') {
+          const uploads = logs.filter(l => l.action === 'UPLOAD');
+          if (uploads.length === 0) {
+            addCommandOutput(cmd, ['⚠️ No upload events found.'], 'warning');
+          } else {
+            const output = [
+              `📤 Found ${uploads.length} upload event(s):`,
+              '═'.repeat(80),
+              '  #  │ TIME     │ USER            │ FILE NAME                    │ SIZE',
+              '─'.repeat(80),
+              ...uploads.map((l, i) => 
+                `  ${(i + 1).toString().padStart(2)} │ ${formatTime(l.timestamp)} │ @${(l.user || 'unknown').padEnd(14)} │ ${(l.metadata?.fileName || 'N/A').substring(0, 28).padEnd(28)} │ ${l.metadata?.fileSize || 'N/A'}`
+              ),
+              '═'.repeat(80),
+            ];
+            addCommandOutput(cmd, output, 'success');
+          }
+        } else if (args[0] === 'errors' || args[0] === 'error') {
+          const errors = logs.filter(l => l.type === 'error');
+          if (errors.length === 0) {
+            addCommandOutput(cmd, ['✅ No errors found. System running smoothly!'], 'success');
+          } else {
+            const output = [
+              `❌ Found ${errors.length} error(s):`,
+              '═'.repeat(80),
+              ...errors.map((l, i) => 
+                `  [${i + 1}] ${formatTime(l.timestamp)} │ ${l.action.padEnd(12)} │ ${l.message.substring(0, 50)}...`
+              ),
+              '═'.repeat(80),
+            ];
+            addCommandOutput(cmd, output, 'error');
+          }
+        } else if (args[0] === 'users' || args[0] === 'user') {
+          const users = [...new Set(logs.filter(l => l.user).map(l => l.user))];
+          if (users.length === 0) {
+            addCommandOutput(cmd, ['⚠️ No users found in logs.'], 'warning');
+          } else {
+            const output = [
+              `👥 Found ${users.length} unique user(s):`,
+              '═'.repeat(65),
+              '  #  │ USERNAME         │ ACTIONS │ LAST ACTIVITY',
+              '─'.repeat(65),
+              ...users.map((u, i) => {
+                const userLogs = logs.filter(l => l.user === u);
+                const lastLog = userLogs[0];
+                return `  ${(i + 1).toString().padStart(2)} │ @${(u || '').padEnd(15)} │ ${userLogs.length.toString().padStart(7)} │ ${formatFullTime(lastLog.timestamp)}`;
+              }),
+              '═'.repeat(65),
+              `💡 Use "dir <username>" for detailed user info`
+            ];
+            addCommandOutput(cmd, output, 'success');
+          }
+        } else if (args[0] === 'ips' || args[0] === 'ip') {
+          const ips = [...new Set(logs.filter(l => l.metadata?.ip).map(l => l.metadata?.ip))];
+          if (ips.length === 0) {
+            addCommandOutput(cmd, ['⚠️ No IP addresses found in logs.'], 'warning');
+          } else {
+            const output = [
+              `🌐 Found ${ips.length} unique IP address(es):`,
+              '═'.repeat(70),
+              '  #  │ IP ADDRESS       │ LOCATION                    │ REQUESTS',
+              '─'.repeat(70),
+              ...ips.map((ip, i) => {
+                const ipLogs = logs.filter(l => l.metadata?.ip === ip);
+                const location = ipLogs.find(l => l.metadata?.location)?.metadata?.location || 'Unknown';
+                return `  ${(i + 1).toString().padStart(2)} │ ${(ip || '').padEnd(16)} │ ${location.substring(0, 27).padEnd(27)} │ ${ipLogs.length.toString().padStart(8)}`;
+              }),
+              '═'.repeat(70),
+              `💡 Use "dir <ip_address>" for detailed IP info`
+            ];
+            addCommandOutput(cmd, output, 'success');
+          }
+        } else {
+          // Default: list all recent logs
+          const recentLogs = logs.slice(0, 20);
+          if (recentLogs.length === 0) {
+            addCommandOutput(cmd, ['⚠️ No logs found. System is idle.'], 'warning');
+          } else {
+            const output = [
+              `📋 Recent Activity (${logs.length} total logs):`,
+              '═'.repeat(90),
+              '  STATUS │ TIME     │ ACTION       │ USER            │ MESSAGE',
+              '─'.repeat(90),
+              ...recentLogs.map((l) => {
+                const statusIcon = l.type === 'error' ? '❌' : l.type === 'warning' ? '⚠️' : l.type === 'success' ? '✅' : 'ℹ️';
+                return `  ${statusIcon}     │ ${formatTime(l.timestamp)} │ ${l.action.padEnd(12)} │ @${(l.user || 'system').padEnd(14)} │ ${l.message.substring(0, 30)}`;
+              }),
+              '═'.repeat(90),
+              `📊 Showing ${recentLogs.length} of ${logs.length} total │ Use "ls logins", "ls uploads", "ls users" for filtered view`
+            ];
+            addCommandOutput(cmd, output, 'info');
+          }
+        }
+        break;
+
+      case 'dir':
+      case 'info':
+      case 'details':
+        if (!args[0]) {
+          addCommandOutput(cmd, [
+            '⚠️ Usage: dir <username> or dir <ip_address>',
+            '',
+            'Examples:',
+            '  dir Gailplugger     - Show details for user "Gailplugger"',
+            '  dir 192.168.1.1     - Show details for IP "192.168.1.1"'
+          ], 'warning');
+        } else {
+          const searchTerm = args.join(' ').toLowerCase();
+          // Check if it's an IP address
+          const isIP = /^\d{1,3}(\.\d{1,3}){3}$/.test(args[0]) || args[0].includes('.');
+          
+          let matchedLogs: AdminLog[];
+          if (isIP) {
+            matchedLogs = logs.filter(l => l.metadata?.ip?.toLowerCase().includes(searchTerm));
+          } else {
+            matchedLogs = logs.filter(l => l.user?.toLowerCase().includes(searchTerm));
+          }
+
+          if (matchedLogs.length === 0) {
+            addCommandOutput(cmd, [`❌ No logs found for "${args[0]}"`], 'error');
+          } else {
+            const firstLog = matchedLogs[matchedLogs.length - 1]; // Oldest
+            const lastLog = matchedLogs[0]; // Most recent
+            const meta = lastLog.metadata || {};
+            
+            const output = [
+              '╔══════════════════════════════════════════════════════════════════════╗',
+              `║  ${isIP ? '🌐 IP ADDRESS' : '👤 USER'} DETAILS: ${args[0].toUpperCase().padEnd(45)}║`,
+              '╠══════════════════════════════════════════════════════════════════════╣',
+              `║  📊 OVERVIEW                                                          ║`,
+              `║  ────────────────────────────────────────────────────────────────────║`,
+              `║  Total Actions: ${matchedLogs.length.toString().padEnd(53)}║`,
+              `║  First Seen: ${formatFullTime(firstLog.timestamp).padEnd(56)}║`,
+              `║  Last Seen: ${formatFullTime(lastLog.timestamp).padEnd(57)}║`,
+              '╠══════════════════════════════════════════════════════════════════════╣',
+              '║  📍 LOCATION & NETWORK                                               ║',
+              `║  ────────────────────────────────────────────────────────────────────║`,
+              `║  IP Address: ${(meta.ip || 'N/A').padEnd(56)}║`,
+              `║  Location: ${(meta.location || 'Unknown').padEnd(58)}║`,
+              `║  Country: ${(meta.country || 'N/A').padEnd(59)}║`,
+              `║  City: ${(meta.city || 'N/A').padEnd(62)}║`,
+              `║  Timezone: ${(meta.timezone || 'N/A').padEnd(58)}║`,
+              `║  Connection: ${(meta.connection || 'N/A').padEnd(56)}║`,
+              '╠══════════════════════════════════════════════════════════════════════╣',
+              '║  💻 DEVICE & SYSTEM                                                  ║',
+              `║  ────────────────────────────────────────────────────────────────────║`,
+              `║  Browser: ${(meta.browser ? `${meta.browser} ${meta.browserVersion || ''}` : 'N/A').padEnd(59)}║`,
+              `║  OS: ${(meta.os ? `${meta.os} ${meta.osVersion || ''}` : 'N/A').padEnd(64)}║`,
+              `║  Device: ${(meta.device || 'N/A').padEnd(60)}║`,
+              `║  Device Type: ${(meta.deviceType || 'N/A').padEnd(55)}║`,
+              `║  Screen: ${(meta.screenResolution || 'N/A').padEnd(60)}║`,
+              `║  Platform: ${(meta.platform || 'N/A').padEnd(58)}║`,
+              `║  CPU Cores: ${(meta.cpuCores?.toString() || 'N/A').padEnd(57)}║`,
+              `║  Memory: ${(meta.memory ? `${meta.memory}GB` : 'N/A').padEnd(60)}║`,
+              `║  Language: ${(meta.language || 'N/A').padEnd(58)}║`,
+              '╠══════════════════════════════════════════════════════════════════════╣',
+              '║  🎯 ACTIVITY BREAKDOWN                                               ║',
+              `║  ────────────────────────────────────────────────────────────────────║`,
+              `║  🔐 Logins: ${matchedLogs.filter(l => l.action === 'LOGIN').length.toString().padEnd(57)}║`,
+              `║  📤 Uploads: ${matchedLogs.filter(l => l.action === 'UPLOAD').length.toString().padEnd(56)}║`,
+              `║  🗑️  Deletes: ${matchedLogs.filter(l => l.action === 'DELETE').length.toString().padEnd(55)}║`,
+              `║  ❌ Errors: ${matchedLogs.filter(l => l.type === 'error').length.toString().padEnd(57)}║`,
+              `║  ⚠️  Warnings: ${matchedLogs.filter(l => l.type === 'warning').length.toString().padEnd(54)}║`,
+              '╠══════════════════════════════════════════════════════════════════════╣',
+              '║  📜 RECENT ACTIVITY (Last 5)                                         ║',
+              `║  ────────────────────────────────────────────────────────────────────║`,
+              ...matchedLogs.slice(0, 5).map(l => 
+                `║  • ${formatTime(l.timestamp)} │ ${l.action.padEnd(12)} │ ${l.message.substring(0, 40).padEnd(40)}║`
+              ),
+              '╚══════════════════════════════════════════════════════════════════════╝',
+            ];
+            addCommandOutput(cmd, output, 'success');
+          }
+        }
+        break;
+
+      case 'show':
+        if (!args[0]) {
+          addCommandOutput(cmd, ['⚠️ Usage: show <log_id>', '💡 Get log ID from "ls" command'], 'warning');
+        } else {
+          const log = logs.find(l => l.id === args[0] || l.id.startsWith(args[0]));
+          if (!log) {
+            addCommandOutput(cmd, [`❌ Log with ID "${args[0]}" not found.`], 'error');
+          } else {
+            const meta = log.metadata || {};
+            const output = [
+              '═'.repeat(70),
+              `📋 LOG ENTRY DETAILS`,
+              '═'.repeat(70),
+              `ID: ${log.id}`,
+              `Timestamp: ${log.timestamp.toISOString()}`,
+              `Type: ${log.type.toUpperCase()}`,
+              `Action: ${log.action}`,
+              `User: ${log.user || 'N/A'}`,
+              `Message: ${log.message}`,
+              log.details ? `Details: ${log.details}` : '',
+              '─'.repeat(70),
+              '📊 METADATA:',
+              `  🌐 IP: ${meta.ip || 'N/A'}`,
+              `  📍 Location: ${meta.location || 'N/A'}`,
+              `  🏳️ Country: ${meta.country || 'N/A'}`,
+              `  🏙️ City: ${meta.city || 'N/A'}`,
+              `  🌐 Browser: ${meta.browser || 'N/A'} ${meta.browserVersion || ''}`,
+              `  💻 OS: ${meta.os || 'N/A'} ${meta.osVersion || ''}`,
+              `  📱 Device: ${meta.device || 'N/A'}`,
+              `  🖥️ Screen: ${meta.screenResolution || 'N/A'}`,
+              `  🔑 Session: ${meta.sessionId || 'N/A'}`,
+              meta.userAgent ? `  🤖 User Agent: ${meta.userAgent}` : '',
+              '═'.repeat(70),
+            ].filter(Boolean);
+            addCommandOutput(cmd, output, 'info');
+          }
+        }
+        break;
+
+      case 'stats':
+      case 'statistics':
+        const totalLogs = logs.length;
+        const loginCount = logs.filter(l => l.action === 'LOGIN').length;
+        const uploadCount = logs.filter(l => l.action === 'UPLOAD').length;
+        const deleteCount = logs.filter(l => l.action === 'DELETE').length;
+        const errorCount = logs.filter(l => l.type === 'error').length;
+        const warningCount = logs.filter(l => l.type === 'warning').length;
+        const successCount = logs.filter(l => l.type === 'success').length;
+        const uniqueUsers = [...new Set(logs.filter(l => l.user).map(l => l.user))].length;
+        const uniqueIPs = [...new Set(logs.filter(l => l.metadata?.ip).map(l => l.metadata?.ip))].length;
+        
+        const healthStatus = errorCount > 10 ? '🔴 CRITICAL' : errorCount > 5 ? '🟡 ATTENTION' : '🟢 HEALTHY';
+        
+        addCommandOutput(cmd, [
+          '╔══════════════════════════════════════════════════════════════╗',
+          '║                   📊 SYSTEM STATISTICS                       ║',
+          '╠══════════════════════════════════════════════════════════════╣',
+          '║  📈 OVERVIEW                                                 ║',
+          '║  ──────────────────────────────────────────────────────────  ║',
+          `║  Total Log Entries: ${totalLogs.toString().padEnd(39)}║`,
+          `║  Unique Users: ${uniqueUsers.toString().padEnd(44)}║`,
+          `║  Unique IP Addresses: ${uniqueIPs.toString().padEnd(37)}║`,
+          '╠══════════════════════════════════════════════════════════════╣',
+          '║  🎯 EVENTS BY TYPE                                           ║',
+          '║  ──────────────────────────────────────────────────────────  ║',
+          `║  ✅ Success: ${successCount.toString().padEnd(46)}║`,
+          `║  ℹ️  Info: ${(totalLogs - successCount - errorCount - warningCount).toString().padEnd(49)}║`,
+          `║  ⚠️  Warnings: ${warningCount.toString().padEnd(44)}║`,
+          `║  ❌ Errors: ${errorCount.toString().padEnd(47)}║`,
+          '╠══════════════════════════════════════════════════════════════╣',
+          '║  📊 EVENTS BY ACTION                                         ║',
+          '║  ──────────────────────────────────────────────────────────  ║',
+          `║  🔐 Logins: ${loginCount.toString().padEnd(47)}║`,
+          `║  📤 Uploads: ${uploadCount.toString().padEnd(46)}║`,
+          `║  🗑️  Deletes: ${deleteCount.toString().padEnd(45)}║`,
+          '╠══════════════════════════════════════════════════════════════╣',
+          `║  System Status: ${healthStatus.padEnd(43)}║`,
+          '╚══════════════════════════════════════════════════════════════╝',
+        ], errorCount > 5 ? 'warning' : 'success');
+        break;
+
+      case 'whoami':
+        try {
+          const adminData = sessionStorage.getItem('admin_user');
+          if (adminData) {
+            const admin = JSON.parse(adminData);
+            addCommandOutput(cmd, [
+              '╔══════════════════════════════════════════════════════════════╗',
+              '║                      👤 CURRENT USER                         ║',
+              '╠══════════════════════════════════════════════════════════════╣',
+              `║  Username: @${(admin.username || 'Unknown').padEnd(47)}║`,
+              `║  Role: ${(admin.isSuperAdmin ? '👑 SUPER ADMIN' : '🔑 ADMIN').padEnd(52)}║`,
+              `║  Status: ${'🟢 ACTIVE SESSION'.padEnd(51)}║`,
+              `║  Avatar: ${(admin.avatar ? '✓ Loaded' : '✗ Not Set').padEnd(50)}║`,
+              '╚══════════════════════════════════════════════════════════════╝',
+            ], 'success');
+          } else {
+            addCommandOutput(cmd, ['❌ Not logged in or session expired.'], 'error');
+          }
+        } catch {
+          addCommandOutput(cmd, ['❌ Unable to retrieve user information.'], 'error');
+        }
+        break;
+
+      case 'uptime':
+        try {
+          const loginTime = sessionStorage.getItem('fp_login_time');
+          if (loginTime) {
+            const startTime = parseInt(loginTime);
+            const uptimeMs = Date.now() - startTime;
+            const hours = Math.floor(uptimeMs / (1000 * 60 * 60));
+            const minutes = Math.floor((uptimeMs % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((uptimeMs % (1000 * 60)) / 1000);
+            addCommandOutput(cmd, [
+              '╔══════════════════════════════════════════════════════════════╗',
+              '║                      🕐 SESSION UPTIME                       ║',
+              '╠══════════════════════════════════════════════════════════════╣',
+              `║  Uptime: ${`${hours}h ${minutes}m ${seconds}s`.padEnd(50)}║`,
+              `║  Session Started: ${new Date(startTime).toLocaleString().padEnd(41)}║`,
+              `║  Current Time: ${new Date().toLocaleString().padEnd(44)}║`,
+              '╚══════════════════════════════════════════════════════════════╝',
+            ], 'info');
+          } else {
+            addCommandOutput(cmd, ['⚠️ Session start time not available.'], 'warning');
+          }
+        } catch {
+          addCommandOutput(cmd, ['❌ Unable to calculate uptime.'], 'error');
+        }
+        break;
+
+      case 'date':
+      case 'time':
+      case 'now':
+        addCommandOutput(cmd, [
+          '╔══════════════════════════════════════════════════════════════╗',
+          '║                      📅 DATE & TIME                          ║',
+          '╠══════════════════════════════════════════════════════════════╣',
+          `║  📅 Date: ${currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).padEnd(49)}║`,
+          `║  🕐 Time: ${currentTime.toLocaleTimeString('en-US', { hour12: true }).padEnd(49)}║`,
+          `║  🌍 Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone.padEnd(45)}║`,
+          `║  📆 ISO: ${currentTime.toISOString().padEnd(50)}║`,
+          `║  ⏱️ Unix: ${Math.floor(currentTime.getTime() / 1000).toString().padEnd(49)}║`,
+          '╚══════════════════════════════════════════════════════════════╝',
+        ], 'info');
+        break;
+
+      case 'find':
+      case 'search':
+        if (!args[0]) {
+          addCommandOutput(cmd, ['⚠️ Usage: find <keyword>', 'Example: find login', 'Example: find error'], 'warning');
+        } else {
+          const keyword = args.join(' ').toLowerCase();
+          const found = logs.filter(l => 
+            l.message.toLowerCase().includes(keyword) ||
+            l.user?.toLowerCase().includes(keyword) ||
+            l.action.toLowerCase().includes(keyword) ||
+            l.details?.toLowerCase().includes(keyword)
+          );
+          if (found.length === 0) {
+            addCommandOutput(cmd, [`❌ No logs found matching "${args.join(' ')}"`], 'warning');
+          } else {
+            addCommandOutput(cmd, [
+              `🔍 Found ${found.length} log(s) matching "${args.join(' ')}":`,
+              '═'.repeat(75),
+              ...found.slice(0, 20).map((l, i) => 
+                `  [${(i + 1).toString().padStart(2)}] ${formatTime(l.timestamp)} │ ${l.action.padEnd(12)} │ ${l.message.substring(0, 40)}...`
+              ),
+              found.length > 20 ? `  ... and ${found.length - 20} more results` : '',
+              '═'.repeat(75),
+            ].filter(Boolean), 'success');
+          }
+        }
+        break;
+
+      case 'grep':
+        if (!args[0]) {
+          addCommandOutput(cmd, ['⚠️ Usage: grep <pattern>', 'Example: grep error', 'Example: grep ^login'], 'warning');
+        } else {
+          try {
+            const pattern = new RegExp(args.join(' '), 'i');
+            const found = logs.filter(l => 
+              pattern.test(l.message) || 
+              pattern.test(l.user || '') ||
+              pattern.test(l.action)
+            );
+            if (found.length === 0) {
+              addCommandOutput(cmd, [`❌ No logs matching pattern "${args.join(' ')}"`], 'warning');
+            } else {
+              addCommandOutput(cmd, [
+                `🔍 grep: ${found.length} match(es) for /${args.join(' ')}/i`,
+                '═'.repeat(70),
+                ...found.slice(0, 15).map((l) => 
+                  `  ${formatTime(l.timestamp)} │ ${l.action.padEnd(12)} │ ${l.message.substring(0, 45)}`
+                ),
+                found.length > 15 ? `  ... and ${found.length - 15} more` : '',
+                '═'.repeat(70),
+              ].filter(Boolean), 'success');
+            }
+          } catch {
+            addCommandOutput(cmd, ['❌ Invalid regex pattern.'], 'error');
+          }
+        }
+        break;
+
+      case 'tail':
+        const tailCount = parseInt(args[0]) || 10;
+        const tailLogs = logs.slice(0, tailCount);
+        addCommandOutput(cmd, [
+          `📋 Last ${tailLogs.length} log(s):`,
+          '═'.repeat(75),
+          ...tailLogs.map(l => 
+            `  ${formatTime(l.timestamp)} │ ${l.action.padEnd(12)} │ ${l.message.substring(0, 45)}`
+          ),
+          '═'.repeat(75),
+        ], 'info');
+        break;
+
+      case 'head':
+        const headCount = parseInt(args[0]) || 10;
+        const headLogs = logs.slice(-headCount).reverse();
+        addCommandOutput(cmd, [
+          `📋 First ${headLogs.length} log(s):`,
+          '═'.repeat(75),
+          ...headLogs.map(l => 
+            `  ${formatTime(l.timestamp)} │ ${l.action.padEnd(12)} │ ${l.message.substring(0, 45)}`
+          ),
+          '═'.repeat(75),
+        ], 'info');
+        break;
+
+      case 'export':
+        handleExport();
+        addCommandOutput(cmd, ['✅ Logs exported successfully! Check your downloads folder.'], 'success');
+        break;
+
+      case 'clear':
+      case 'cls':
+        setCommandOutputs([]);
+        break;
+
+      case 'clearall':
+        addCommandOutput(cmd, [
+          '⚠️ WARNING: This will permanently delete ALL logs!',
+          '',
+          'Type "confirm clearall" to proceed.',
+          'Type "cancel" to abort.'
+        ], 'warning');
+        break;
+
+      case 'confirm':
+        if (args[0] === 'clearall') {
+          clearLogs();
+          setCommandOutputs([]);
+          addCommandOutput('clearall', ['✅ All logs have been cleared.'], 'success');
+        }
+        break;
+
+      case 'cancel':
+        addCommandOutput(cmd, ['Operation cancelled.'], 'info');
+        break;
+
+      case 'exit':
+      case 'quit':
+      case 'q':
+        setShowCommandMode(false);
+        setCommandOutputs([]);
+        break;
+
+      case '':
+        break;
+
+      default:
+        addCommandOutput(cmd, [
+          `❌ Unknown command: "${command}"`,
+          '',
+          '💡 Type "help" or "?" to see available commands.'
+        ], 'error');
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      processCommand(commandInput);
+      setCommandInput('');
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (commandHistory.length > 0) {
+        const newIndex = historyIndex < commandHistory.length - 1 ? historyIndex + 1 : historyIndex;
+        setHistoryIndex(newIndex);
+        setCommandInput(commandHistory[commandHistory.length - 1 - newIndex] || '');
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex > 0) {
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        setCommandInput(commandHistory[commandHistory.length - 1 - newIndex] || '');
+      } else if (historyIndex === 0) {
+        setHistoryIndex(-1);
+        setCommandInput('');
+      }
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      // Tab completion
+      const commands = ['help', 'ls', 'list', 'dir', 'show', 'stats', 'whoami', 'uptime', 'date', 'time', 'find', 'grep', 'tail', 'head', 'export', 'clear', 'cls', 'clearall', 'exit', 'quit'];
+      const matching = commands.filter(c => c.startsWith(commandInput.toLowerCase()));
+      if (matching.length === 1) {
+        setCommandInput(matching[0]);
+      } else if (matching.length > 1) {
+        addCommandOutput(commandInput, [`Suggestions: ${matching.join(', ')}`], 'info');
+      }
+    } else if (e.key === 'Escape') {
+      setShowCommandMode(false);
+    }
+  };
+
+  const getActionEmoji = (action: AdminLog['action']) => {
+    switch (action) {
+      case 'LOGIN': return '🔐';
+      case 'LOGOUT': return '🚪';
+      case 'UPLOAD': return '📤';
+      case 'DELETE': return '🗑️';
+      case 'ADMIN_ADD': return '👤';
+      case 'ADMIN_REMOVE': return '🚫';
+      case 'SYSTEM': return '⚙️';
+      case 'SESSION': return '🔄';
+      case 'ACCESS': return '🌐';
+      case 'SECURITY': return '🛡️';
+      case 'ERROR': return '❌';
+      default: return '📋';
+    }
+  };
 
   const handleClear = () => {
     if (confirm('Are you sure you want to clear all logs?')) {
@@ -83,7 +711,6 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
       if (meta) {
         entry += `\n--- METADATA ---\n`;
         if (meta.ip) entry += `🌐 IP Address: ${meta.ip}\n`;
-        if (meta.ipv6) entry += `🔗 IPv6: ${meta.ipv6}\n`;
         if (meta.location) entry += `📍 Location: ${meta.location}\n`;
         if (meta.country) entry += `🏳️ Country: ${meta.country}\n`;
         if (meta.city) entry += `🏙️ City: ${meta.city}\n`;
@@ -91,28 +718,12 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
         if (meta.browser) entry += `🌐 Browser: ${meta.browser} ${meta.browserVersion || ''}\n`;
         if (meta.os) entry += `💻 OS: ${meta.os} ${meta.osVersion || ''}\n`;
         if (meta.device) entry += `📱 Device: ${meta.device}\n`;
-        if (meta.deviceType) entry += `📲 Device Type: ${meta.deviceType}\n`;
         if (meta.screenResolution) entry += `🖥️ Screen: ${meta.screenResolution}\n`;
-        if (meta.colorDepth) entry += `🎨 Color Depth: ${meta.colorDepth}\n`;
-        if (meta.language) entry += `🌍 Language: ${meta.language}\n`;
         if (meta.platform) entry += `⚙️ Platform: ${meta.platform}\n`;
-        if (meta.vendor) entry += `🏭 Vendor: ${meta.vendor}\n`;
         if (meta.cpuCores) entry += `🔧 CPU Cores: ${meta.cpuCores}\n`;
         if (meta.memory) entry += `💾 Memory: ${meta.memory}GB\n`;
         if (meta.connection) entry += `📡 Connection: ${meta.connection}\n`;
-        if (meta.touchSupport !== undefined) entry += `👆 Touch: ${meta.touchSupport ? 'Yes' : 'No'}\n`;
-        if (meta.cookiesEnabled !== undefined) entry += `🍪 Cookies: ${meta.cookiesEnabled ? 'Enabled' : 'Disabled'}\n`;
         if (meta.sessionId) entry += `🔑 Session: ${meta.sessionId}\n`;
-        if (meta.isSuperAdmin !== undefined) entry += `👑 Super Admin: ${meta.isSuperAdmin ? 'Yes' : 'No'}\n`;
-        if (meta.role) entry += `🎭 Role: ${meta.role}\n`;
-        if (meta.fileName) entry += `📄 File: ${meta.fileName}\n`;
-        if (meta.fileSize) entry += `📏 Size: ${meta.fileSize}\n`;
-        if (meta.fileType) entry += `📂 Type: ${meta.fileType}\n`;
-        if (meta.path) entry += `📁 Path: ${meta.path}\n`;
-        if (meta.statusCode) entry += `🔢 Status: ${meta.statusCode}\n`;
-        if (meta.responseTime) entry += `⏱️ Response: ${meta.responseTime}\n`;
-        if (meta.referrer) entry += `🔗 Referrer: ${meta.referrer}\n`;
-        if (meta.pageUrl) entry += `📎 URL: ${meta.pageUrl}\n`;
         if (meta.userAgent) entry += `🤖 User Agent: ${meta.userAgent}\n`;
       }
       return entry;
@@ -156,23 +767,6 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
       case 'error': return <XCircle className="w-3 h-3 text-red-400" />;
       case 'warning': return <AlertTriangle className="w-3 h-3 text-yellow-400" />;
       default: return <Info className="w-3 h-3 text-cyan-400" />;
-    }
-  };
-
-  const getActionIcon = (action: AdminLog['action']) => {
-    switch (action) {
-      case 'LOGIN': return '🔐';
-      case 'LOGOUT': return '🚪';
-      case 'UPLOAD': return '📤';
-      case 'DELETE': return '🗑️';
-      case 'ADMIN_ADD': return '👤';
-      case 'ADMIN_REMOVE': return '🚫';
-      case 'SYSTEM': return '⚙️';
-      case 'SESSION': return '🔄';
-      case 'ACCESS': return '🌐';
-      case 'SECURITY': return '🛡️';
-      case 'ERROR': return '❌';
-      default: return '📋';
     }
   };
 
@@ -232,6 +826,15 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
     ? 'fixed inset-4 z-50 flex flex-col' 
     : className;
 
+  const getOutputColor = (type: CommandOutput['type']) => {
+    switch (type) {
+      case 'success': return 'text-green-400';
+      case 'error': return 'text-red-400';
+      case 'warning': return 'text-yellow-400';
+      default: return 'text-gray-300';
+    }
+  };
+
   return (
     <>
       {/* Fullscreen backdrop */}
@@ -255,10 +858,10 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
               
               <Terminal className="w-4 h-4 text-green-400" />
               <h2 className="text-xs font-mono font-semibold text-gray-300">
-                root@futurepoint:~$ system.logs --verbose --realtime
+                root@futurepoint:~$ {showCommandMode ? 'bash' : 'logs --watch'}
               </h2>
               <span className="text-[10px] text-green-400 font-mono bg-green-500/20 px-1.5 py-0.5 rounded">
-                {filteredLogs.length}
+                {showCommandMode ? 'CMD' : filteredLogs.length}
               </span>
               {!fullscreen && (
                 expanded ? (
@@ -270,32 +873,41 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
             </div>
             
             <div className="flex items-center gap-1">
-              {/* Filter dropdown */}
-              <select 
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                className="h-6 px-2 text-[10px] bg-navy-800 border border-white/10 rounded text-gray-400 font-mono focus:ring-1 focus:ring-green-500"
+              {/* Command Mode Toggle */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCommandMode(!showCommandMode)}
+                className={`h-6 px-2 text-[10px] font-mono ${showCommandMode ? 'bg-green-500/30 text-green-400 ring-1 ring-green-500/50' : 'hover:bg-green-500/10'}`}
+                title={showCommandMode ? 'Exit command mode (ESC)' : 'Enter command mode'}
               >
-                <option value="all">📋 All Logs ({logs.length})</option>
-                <option value="LOGIN">🔐 Login ({stats.logins})</option>
-                <option value="LOGOUT">🚪 Logout</option>
-                <option value="UPLOAD">📤 Upload ({stats.uploads})</option>
-                <option value="DELETE">🗑️ Delete</option>
-                <option value="ADMIN_ADD">👤 Admin Add</option>
-                <option value="ADMIN_REMOVE">🚫 Admin Remove</option>
-                <option value="SYSTEM">⚙️ System</option>
-                <option value="SECURITY">🛡️ Security</option>
-                <option value="success">✅ Success ({stats.success})</option>
-                <option value="error">❌ Errors ({stats.errors})</option>
-                <option value="warning">⚠️ Warnings ({stats.warnings})</option>
-              </select>
+                {showCommandMode ? '⌨️ EXIT' : '⌨️ CMD'}
+              </Button>
+
+              {/* Filter dropdown - only show in log view */}
+              {!showCommandMode && (
+                <select 
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  className="h-6 px-2 text-[10px] bg-navy-800 border border-white/10 rounded text-gray-400 font-mono focus:ring-1 focus:ring-green-500"
+                >
+                  <option value="all">📋 All ({logs.length})</option>
+                  <option value="LOGIN">🔐 Login ({stats.logins})</option>
+                  <option value="LOGOUT">🚪 Logout</option>
+                  <option value="UPLOAD">📤 Upload ({stats.uploads})</option>
+                  <option value="DELETE">🗑️ Delete</option>
+                  <option value="SYSTEM">⚙️ System</option>
+                  <option value="error">❌ Errors ({stats.errors})</option>
+                  <option value="warning">⚠️ Warnings ({stats.warnings})</option>
+                </select>
+              )}
               
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setFullscreen(!fullscreen)}
                 className="h-6 w-6 p-0"
-                title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+                title={fullscreen ? "Exit fullscreen (ESC)" : "Fullscreen"}
               >
                 {fullscreen ? (
                   <Minimize2 className="w-3 h-3 text-gray-400" />
@@ -335,405 +947,265 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
               className={fullscreen ? 'flex-1 flex flex-col overflow-hidden' : ''}
             >
               <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
-                <div className={`flex ${fullscreen ? 'flex-1' : ''}`}>
-                  {/* Main logs area */}
-                  <div 
-                    ref={terminalRef}
-                    className={`flex-1 bg-[#0d1117] font-mono text-[11px] overflow-y-auto p-2 space-y-1.5 ${
-                      fullscreen ? 'max-h-full' : 'max-h-96 min-h-[250px]'
-                    }`}
-                  >
-                    {filteredLogs.length === 0 ? (
-                      <div className="text-gray-600 flex flex-col items-center gap-2 py-12 justify-center">
-                        <Terminal className="w-10 h-10 opacity-50" />
-                        <span className="text-gray-500">Waiting for system events...</span>
-                        <span className="text-[10px] text-gray-600">All admin actions will be logged here in real-time</span>
-                        <div className="flex items-center gap-2 mt-2 text-[10px]">
-                          <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3 text-green-500" /> Success</span>
-                          <span className="flex items-center gap-1"><XCircle className="w-3 h-3 text-red-500" /> Error</span>
-                          <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3 text-yellow-500" /> Warning</span>
-                          <span className="flex items-center gap-1"><Info className="w-3 h-3 text-cyan-500" /> Info</span>
+                <div 
+                  ref={terminalRef}
+                  className={`flex-1 bg-[#0d1117] font-mono text-[11px] overflow-y-auto p-3 ${
+                    fullscreen ? 'max-h-full' : 'max-h-[400px] min-h-[300px]'
+                  }`}
+                  onClick={() => showCommandMode && inputRef.current?.focus()}
+                >
+                  {showCommandMode ? (
+                    /* ═══════════════════════ COMMAND MODE ═══════════════════════ */
+                    <div className="space-y-2">
+                      {/* Welcome message */}
+                      {commandOutputs.length === 0 && (
+                        <div className="text-gray-400 space-y-1 pb-4">
+                          <div className="text-green-400 text-sm">╔══════════════════════════════════════════════════════════════╗</div>
+                          <div className="text-green-400 text-sm">║     🖥️  FUTURE POINT ADMIN TERMINAL v2.0                     ║</div>
+                          <div className="text-green-400 text-sm">║                 Interactive Command Mode                     ║</div>
+                          <div className="text-green-400 text-sm">╠══════════════════════════════════════════════════════════════╣</div>
+                          <div className="text-cyan-400 text-sm">║  Type "help" or "?" to see all available commands            ║</div>
+                          <div className="text-cyan-400 text-sm">║  Type "ls" to list all sessions and activity                 ║</div>
+                          <div className="text-cyan-400 text-sm">║  Type "dir &lt;username&gt;" to see detailed user info             ║</div>
+                          <div className="text-cyan-400 text-sm">║  Type "stats" to see system statistics                       ║</div>
+                          <div className="text-cyan-400 text-sm">║  Press ESC or type "exit" to return to log view              ║</div>
+                          <div className="text-green-400 text-sm">╚══════════════════════════════════════════════════════════════╝</div>
+                          <div className="text-gray-600 mt-2">Ready for input...</div>
                         </div>
-                      </div>
-                    ) : (
-                      filteredLogs.map((log: AdminLog, index: number) => (
-                        <motion.div
-                          key={log.id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: Math.min(index * 0.02, 0.5) }}
-                          onClick={() => setSelectedLog(selectedLog?.id === log.id ? null : log)}
-                          className={`border-l-2 pl-2 py-2 cursor-pointer transition-all rounded-r ${getLogBg(log.type)} ${
-                            selectedLog?.id === log.id ? 'ring-1 ring-white/20' : ''
-                          }`}
-                        >
-                          {/* Main log line */}
-                          <div className="flex items-start gap-2">
-                            <span className="text-gray-600 select-none flex-shrink-0 w-16 text-[10px]">
-                              {formatTime(log.timestamp)}
-                            </span>
-                            <span className="select-none w-5 text-center">
-                              {getActionIcon(log.action)}
-                            </span>
-                            {getTypeIcon(log.type)}
-                            <span className={`font-bold ${getLogColor(log.type)} w-14 flex-shrink-0 text-[10px]`}>
-                              [{log.type.toUpperCase()}]
-                            </span>
-                            <span className="text-purple-400 w-24 flex-shrink-0 truncate text-[10px] bg-purple-500/10 px-1 rounded">
-                              {log.action}
-                            </span>
-                            <span className="text-gray-200 flex-1">
-                              {log.message}
-                            </span>
-                            {log.user && (
-                              <span className="text-blue-400 flex-shrink-0 bg-blue-500/20 px-1.5 rounded text-[10px]">
-                                @{log.user}
-                              </span>
-                            )}
-                            <Eye className={`w-3 h-3 ${selectedLog?.id === log.id ? 'text-white' : 'text-gray-600'}`} />
+                      )}
+
+                      {/* Command outputs */}
+                      {commandOutputs.map((output) => (
+                        <div key={output.id} className="space-y-1 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-green-500">root@futurepoint</span>
+                            <span className="text-gray-500">:</span>
+                            <span className="text-blue-400">~</span>
+                            <span className="text-gray-500">$</span>
+                            <span className="text-white">{output.command}</span>
                           </div>
-                          
-                          {/* Quick metadata line */}
-                          {log.metadata && (
-                            <div className="flex items-center gap-2 mt-1.5 ml-[88px] text-[9px] text-gray-500 flex-wrap">
-                              {log.metadata.ip && (
-                                <span className="flex items-center gap-1 bg-white/5 px-1.5 py-0.5 rounded">
-                                  <Globe className="w-2.5 h-2.5 text-green-400" />
-                                  <span className="text-green-400">{log.metadata.ip}</span>
-                                </span>
-                              )}
-                              {log.metadata.location && (
-                                <span className="flex items-center gap-1 bg-white/5 px-1.5 py-0.5 rounded">
-                                  <MapPin className="w-2.5 h-2.5 text-orange-400" />
-                                  <span className="text-orange-400">{log.metadata.location}</span>
-                                </span>
-                              )}
-                              {log.metadata.browser && (
-                                <span className="flex items-center gap-1 bg-white/5 px-1.5 py-0.5 rounded">
-                                  {getDeviceIcon(log.metadata.device)}
-                                  <span>{log.metadata.browser}</span>
-                                  {log.metadata.browserVersion && <span className="text-gray-600">v{log.metadata.browserVersion}</span>}
-                                </span>
-                              )}
-                              {log.metadata.os && (
-                                <span className="flex items-center gap-1 bg-white/5 px-1.5 py-0.5 rounded">
-                                  <Server className="w-2.5 h-2.5" />
-                                  <span>{log.metadata.os}</span>
-                                </span>
-                              )}
-                              {log.metadata.isSuperAdmin !== undefined && (
-                                <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${log.metadata.isSuperAdmin ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}`}>
-                                  {log.metadata.isSuperAdmin ? <Shield className="w-2.5 h-2.5" /> : <User className="w-2.5 h-2.5" />}
-                                  {log.metadata.isSuperAdmin ? 'SUPER ADMIN' : 'ADMIN'}
-                                </span>
-                              )}
-                              {log.metadata.responseTime && (
-                                <span className="flex items-center gap-1 bg-white/5 px-1.5 py-0.5 rounded">
-                                  <Zap className="w-2.5 h-2.5 text-yellow-400" />
-                                  <span className="text-yellow-400">{log.metadata.responseTime}</span>
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          
-                          {/* Expanded details panel */}
-                          <AnimatePresence>
-                            {selectedLog?.id === log.id && (
-                              <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                className="mt-3 ml-[88px] p-3 bg-black/50 rounded-lg border border-white/10 text-[10px] space-y-2"
-                              >
-                                {/* Header */}
-                                <div className="flex items-center gap-2 pb-2 border-b border-white/10">
-                                  <Hash className="w-3 h-3 text-gray-500" />
-                                  <span className="text-gray-500">Log ID:</span>
-                                  <span className="text-gray-400 font-mono">{log.id}</span>
-                                </div>
+                          <div className={`whitespace-pre-wrap ${getOutputColor(output.type)}`}>
+                            {output.output.map((line, i) => (
+                              <div key={i} className="leading-relaxed">{line}</div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
 
-                                {/* Details Grid */}
-                                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                                  {/* Time & Date */}
-                                  <div className="flex items-center gap-2">
-                                    <Calendar className="w-3 h-3 text-blue-400" />
-                                    <span className="text-gray-500">Full Timestamp:</span>
-                                    <span className="text-blue-300">{formatFullTime(log.timestamp)}</span>
-                                  </div>
-                                  
-                                  {/* User */}
-                                  {log.user && (
-                                    <div className="flex items-center gap-2">
-                                      <User className="w-3 h-3 text-blue-400" />
-                                      <span className="text-gray-500">User:</span>
-                                      <span className="text-blue-400 font-semibold">@{log.user}</span>
-                                    </div>
+                      {/* Input line */}
+                      <div className="flex items-center gap-2 pt-2 border-t border-white/5">
+                        <span className="text-green-500">root@futurepoint</span>
+                        <span className="text-gray-500">:</span>
+                        <span className="text-blue-400">~</span>
+                        <span className="text-gray-500">$</span>
+                        <input
+                          ref={inputRef}
+                          type="text"
+                          value={commandInput}
+                          onChange={(e) => setCommandInput(e.target.value)}
+                          onKeyDown={handleKeyDown}
+                          className="flex-1 bg-transparent outline-none text-white caret-green-400 placeholder-gray-600"
+                          placeholder="Type a command... (try 'help')"
+                          autoFocus
+                          spellCheck={false}
+                          autoComplete="off"
+                        />
+                        <span className="animate-pulse text-green-400">▋</span>
+                      </div>
+                    </div>
+                  ) : (
+                    /* ═══════════════════════ LOG VIEW MODE ═══════════════════════ */
+                    <div className="space-y-1.5">
+                      {filteredLogs.length === 0 ? (
+                        <div className="text-gray-600 flex flex-col items-center gap-3 py-12 justify-center">
+                          <Terminal className="w-12 h-12 opacity-40" />
+                          <span className="text-gray-500 text-sm">Waiting for system events...</span>
+                          <span className="text-[10px] text-gray-600">All admin actions will be logged here in real-time</span>
+                          <div className="flex items-center gap-3 mt-2 text-[10px]">
+                            <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3 text-green-500" /> Success</span>
+                            <span className="flex items-center gap-1"><XCircle className="w-3 h-3 text-red-500" /> Error</span>
+                            <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3 text-yellow-500" /> Warning</span>
+                          </div>
+                          <button 
+                            onClick={() => setShowCommandMode(true)}
+                            className="mt-4 px-4 py-2 bg-green-500/20 text-green-400 rounded-lg text-xs hover:bg-green-500/30 transition-colors flex items-center gap-2"
+                          >
+                            <Terminal className="w-4 h-4" />
+                            Open Interactive Terminal
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          {filteredLogs.map((log: AdminLog, index: number) => (
+                            <motion.div
+                              key={log.id}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: Math.min(index * 0.02, 0.5) }}
+                              onClick={() => setSelectedLog(selectedLog?.id === log.id ? null : log)}
+                              className={`border-l-2 pl-2 py-2 cursor-pointer transition-all rounded-r ${getLogBg(log.type)} ${
+                                selectedLog?.id === log.id ? 'ring-1 ring-white/20' : ''
+                              }`}
+                            >
+                              {/* Main log line */}
+                              <div className="flex items-start gap-2">
+                                <span className="text-gray-600 select-none flex-shrink-0 w-16 text-[10px]">
+                                  {formatTime(log.timestamp)}
+                                </span>
+                                <span className="select-none w-5 text-center">
+                                  {getActionEmoji(log.action)}
+                                </span>
+                                {getTypeIcon(log.type)}
+                                <span className={`font-bold ${getLogColor(log.type)} w-14 flex-shrink-0 text-[10px]`}>
+                                  [{log.type.toUpperCase()}]
+                                </span>
+                                <span className="text-purple-400 w-24 flex-shrink-0 truncate text-[10px] bg-purple-500/10 px-1 rounded">
+                                  {log.action}
+                                </span>
+                                <span className="text-gray-200 flex-1">
+                                  {log.message}
+                                </span>
+                                {log.user && (
+                                  <span className="text-blue-400 flex-shrink-0 bg-blue-500/20 px-1.5 rounded text-[10px]">
+                                    @{log.user}
+                                  </span>
+                                )}
+                                <Eye className={`w-3 h-3 flex-shrink-0 ${selectedLog?.id === log.id ? 'text-white' : 'text-gray-600'}`} />
+                              </div>
+                              
+                              {/* Quick metadata line */}
+                              {log.metadata && (
+                                <div className="flex items-center gap-2 mt-1.5 ml-[88px] text-[9px] text-gray-500 flex-wrap">
+                                  {log.metadata.ip && (
+                                    <span className="flex items-center gap-1 bg-white/5 px-1.5 py-0.5 rounded">
+                                      <Globe className="w-2.5 h-2.5 text-green-400" />
+                                      <span className="text-green-400">{log.metadata.ip}</span>
+                                    </span>
                                   )}
-
-                                  {/* IP Address */}
-                                  {log.metadata?.ip && (
-                                    <div className="flex items-center gap-2">
-                                      <Globe className="w-3 h-3 text-green-400" />
-                                      <span className="text-gray-500">IP Address:</span>
-                                      <span className="text-green-400 font-mono">{log.metadata.ip}</span>
-                                    </div>
-                                  )}
-
-                                  {/* Location */}
-                                  {log.metadata?.location && (
-                                    <div className="flex items-center gap-2">
-                                      <MapPin className="w-3 h-3 text-orange-400" />
-                                      <span className="text-gray-500">Location:</span>
+                                  {log.metadata.location && (
+                                    <span className="flex items-center gap-1 bg-white/5 px-1.5 py-0.5 rounded">
+                                      <MapPin className="w-2.5 h-2.5 text-orange-400" />
                                       <span className="text-orange-400">{log.metadata.location}</span>
-                                    </div>
+                                    </span>
                                   )}
-
-                                  {/* Country & City */}
-                                  {log.metadata?.country && (
-                                    <div className="flex items-center gap-2">
-                                      <Globe className="w-3 h-3 text-purple-400" />
-                                      <span className="text-gray-500">Country:</span>
-                                      <span className="text-purple-400">{log.metadata.country}</span>
-                                    </div>
-                                  )}
-
-                                  {log.metadata?.city && (
-                                    <div className="flex items-center gap-2">
-                                      <MapPin className="w-3 h-3 text-pink-400" />
-                                      <span className="text-gray-500">City:</span>
-                                      <span className="text-pink-400">{log.metadata.city}</span>
-                                    </div>
-                                  )}
-
-                                  {/* Timezone */}
-                                  {log.metadata?.timezone && (
-                                    <div className="flex items-center gap-2">
-                                      <Clock className="w-3 h-3 text-cyan-400" />
-                                      <span className="text-gray-500">Timezone:</span>
-                                      <span className="text-cyan-400">{log.metadata.timezone}</span>
-                                    </div>
-                                  )}
-
-                                  {/* Browser */}
-                                  {log.metadata?.browser && (
-                                    <div className="flex items-center gap-2">
-                                      <Monitor className="w-3 h-3 text-blue-400" />
-                                      <span className="text-gray-500">Browser:</span>
-                                      <span className="text-gray-300">{log.metadata.browser} {log.metadata.browserVersion && `v${log.metadata.browserVersion}`}</span>
-                                    </div>
-                                  )}
-
-                                  {/* OS */}
-                                  {log.metadata?.os && (
-                                    <div className="flex items-center gap-2">
-                                      <Server className="w-3 h-3 text-emerald-400" />
-                                      <span className="text-gray-500">Operating System:</span>
-                                      <span className="text-gray-300">{log.metadata.os} {log.metadata.osVersion || ''}</span>
-                                    </div>
-                                  )}
-
-                                  {/* Device */}
-                                  {log.metadata?.device && (
-                                    <div className="flex items-center gap-2">
+                                  {log.metadata.browser && (
+                                    <span className="flex items-center gap-1 bg-white/5 px-1.5 py-0.5 rounded">
                                       {getDeviceIcon(log.metadata.device)}
-                                      <span className="text-gray-500">Device:</span>
-                                      <span className="text-gray-300">{log.metadata.device} {log.metadata.deviceType && `(${log.metadata.deviceType})`}</span>
-                                    </div>
+                                      <span>{log.metadata.browser}</span>
+                                    </span>
                                   )}
-
-                                  {/* Screen Resolution */}
-                                  {log.metadata?.screenResolution && (
-                                    <div className="flex items-center gap-2">
-                                      <Monitor className="w-3 h-3 text-indigo-400" />
-                                      <span className="text-gray-500">Screen:</span>
-                                      <span className="text-indigo-400">{log.metadata.screenResolution}</span>
-                                    </div>
-                                  )}
-
-                                  {/* Language */}
-                                  {log.metadata?.language && (
-                                    <div className="flex items-center gap-2">
-                                      <Globe className="w-3 h-3 text-teal-400" />
-                                      <span className="text-gray-500">Language:</span>
-                                      <span className="text-teal-400">{log.metadata.language}</span>
-                                    </div>
-                                  )}
-
-                                  {/* Platform */}
-                                  {log.metadata?.platform && (
-                                    <div className="flex items-center gap-2">
-                                      <Cpu className="w-3 h-3 text-rose-400" />
-                                      <span className="text-gray-500">Platform:</span>
-                                      <span className="text-rose-400">{log.metadata.platform}</span>
-                                    </div>
-                                  )}
-
-                                  {/* CPU Cores */}
-                                  {log.metadata?.cpuCores && (
-                                    <div className="flex items-center gap-2">
-                                      <Cpu className="w-3 h-3 text-amber-400" />
-                                      <span className="text-gray-500">CPU Cores:</span>
-                                      <span className="text-amber-400">{log.metadata.cpuCores}</span>
-                                    </div>
-                                  )}
-
-                                  {/* Memory */}
-                                  {log.metadata?.memory && (
-                                    <div className="flex items-center gap-2">
-                                      <HardDrive className="w-3 h-3 text-lime-400" />
-                                      <span className="text-gray-500">Device Memory:</span>
-                                      <span className="text-lime-400">{log.metadata.memory}GB</span>
-                                    </div>
-                                  )}
-
-                                  {/* Connection */}
-                                  {log.metadata?.connection && (
-                                    <div className="flex items-center gap-2">
-                                      <Wifi className="w-3 h-3 text-sky-400" />
-                                      <span className="text-gray-500">Connection:</span>
-                                      <span className="text-sky-400">{log.metadata.connection}</span>
-                                    </div>
-                                  )}
-
-                                  {/* Touch Support */}
-                                  {log.metadata?.touchSupport !== undefined && (
-                                    <div className="flex items-center gap-2">
-                                      <Activity className="w-3 h-3 text-violet-400" />
-                                      <span className="text-gray-500">Touch:</span>
-                                      <span className={log.metadata.touchSupport ? 'text-green-400' : 'text-red-400'}>
-                                        {log.metadata.touchSupport ? 'Supported' : 'Not Supported'}
-                                      </span>
-                                    </div>
-                                  )}
-
-                                  {/* Cookies */}
-                                  {log.metadata?.cookiesEnabled !== undefined && (
-                                    <div className="flex items-center gap-2">
-                                      {log.metadata.cookiesEnabled ? <Unlock className="w-3 h-3 text-green-400" /> : <Lock className="w-3 h-3 text-red-400" />}
-                                      <span className="text-gray-500">Cookies:</span>
-                                      <span className={log.metadata.cookiesEnabled ? 'text-green-400' : 'text-red-400'}>
-                                        {log.metadata.cookiesEnabled ? 'Enabled' : 'Disabled'}
-                                      </span>
-                                    </div>
-                                  )}
-
-                                  {/* Role */}
-                                  {log.metadata?.role && (
-                                    <div className="flex items-center gap-2">
-                                      <Shield className="w-3 h-3 text-yellow-400" />
-                                      <span className="text-gray-500">Role:</span>
-                                      <span className="text-yellow-400 font-semibold">{log.metadata.role}</span>
-                                    </div>
-                                  )}
-
-                                  {/* Super Admin */}
-                                  {log.metadata?.isSuperAdmin !== undefined && (
-                                    <div className="flex items-center gap-2">
-                                      <Shield className="w-3 h-3 text-yellow-400" />
-                                      <span className="text-gray-500">Super Admin:</span>
-                                      <span className={log.metadata.isSuperAdmin ? 'text-yellow-400 font-bold' : 'text-gray-400'}>
-                                        {log.metadata.isSuperAdmin ? '✓ YES' : '✗ NO'}
-                                      </span>
-                                    </div>
-                                  )}
-
-                                  {/* Response Time */}
-                                  {log.metadata?.responseTime && (
-                                    <div className="flex items-center gap-2">
-                                      <Zap className="w-3 h-3 text-yellow-400" />
-                                      <span className="text-gray-500">Response Time:</span>
-                                      <span className="text-yellow-400">{log.metadata.responseTime}</span>
-                                    </div>
-                                  )}
-
-                                  {/* Status Code */}
-                                  {log.metadata?.statusCode && (
-                                    <div className="flex items-center gap-2">
-                                      <Activity className="w-3 h-3" />
-                                      <span className="text-gray-500">Status Code:</span>
-                                      <span className={log.metadata.statusCode < 400 ? 'text-green-400' : 'text-red-400'}>
-                                        {log.metadata.statusCode}
-                                      </span>
-                                    </div>
+                                  {log.metadata.isSuperAdmin !== undefined && (
+                                    <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${log.metadata.isSuperAdmin ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                                      {log.metadata.isSuperAdmin ? <Shield className="w-2.5 h-2.5" /> : <User className="w-2.5 h-2.5" />}
+                                      {log.metadata.isSuperAdmin ? 'SUPER' : 'ADMIN'}
+                                    </span>
                                   )}
                                 </div>
-
-                                {/* File Info */}
-                                {log.metadata?.fileName && (
-                                  <div className="pt-2 border-t border-white/5 space-y-1">
-                                    <div className="flex items-center gap-2">
-                                      <FileText className="w-3 h-3 text-orange-400" />
-                                      <span className="text-gray-500">File:</span>
-                                      <span className="text-orange-400">{log.metadata.fileName}</span>
-                                      {log.metadata.fileSize && (
-                                        <span className="text-gray-500">({log.metadata.fileSize})</span>
+                              )}
+                              
+                              {/* Expanded details panel */}
+                              <AnimatePresence>
+                                {selectedLog?.id === log.id && (
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="mt-3 ml-[88px] p-3 bg-black/50 rounded-lg border border-white/10 text-[10px] space-y-2"
+                                  >
+                                    <div className="flex items-center gap-2 pb-2 border-b border-white/10">
+                                      <Hash className="w-3 h-3 text-gray-500" />
+                                      <span className="text-gray-500">ID:</span>
+                                      <span className="text-gray-400 font-mono text-[9px]">{log.id}</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                                      <div className="flex items-center gap-2">
+                                        <Calendar className="w-3 h-3 text-blue-400" />
+                                        <span className="text-gray-500">Time:</span>
+                                        <span className="text-blue-300">{formatFullTime(log.timestamp)}</span>
+                                      </div>
+                                      {log.user && (
+                                        <div className="flex items-center gap-2">
+                                          <User className="w-3 h-3 text-blue-400" />
+                                          <span className="text-gray-500">User:</span>
+                                          <span className="text-blue-400 font-semibold">@{log.user}</span>
+                                        </div>
                                       )}
-                                      {log.metadata.fileType && (
-                                        <span className="text-gray-600 bg-white/5 px-1 rounded">{log.metadata.fileType}</span>
+                                      {log.metadata?.ip && (
+                                        <div className="flex items-center gap-2">
+                                          <Globe className="w-3 h-3 text-green-400" />
+                                          <span className="text-gray-500">IP:</span>
+                                          <span className="text-green-400 font-mono">{log.metadata.ip}</span>
+                                        </div>
+                                      )}
+                                      {log.metadata?.location && (
+                                        <div className="flex items-center gap-2">
+                                          <MapPin className="w-3 h-3 text-orange-400" />
+                                          <span className="text-gray-500">Location:</span>
+                                          <span className="text-orange-400">{log.metadata.location}</span>
+                                        </div>
+                                      )}
+                                      {log.metadata?.browser && (
+                                        <div className="flex items-center gap-2">
+                                          <Monitor className="w-3 h-3 text-cyan-400" />
+                                          <span className="text-gray-500">Browser:</span>
+                                          <span className="text-gray-300">{log.metadata.browser} {log.metadata.browserVersion}</span>
+                                        </div>
+                                      )}
+                                      {log.metadata?.os && (
+                                        <div className="flex items-center gap-2">
+                                          <Server className="w-3 h-3 text-emerald-400" />
+                                          <span className="text-gray-500">OS:</span>
+                                          <span className="text-gray-300">{log.metadata.os}</span>
+                                        </div>
+                                      )}
+                                      {log.metadata?.device && (
+                                        <div className="flex items-center gap-2">
+                                          {getDeviceIcon(log.metadata.device)}
+                                          <span className="text-gray-500">Device:</span>
+                                          <span className="text-gray-300">{log.metadata.device}</span>
+                                        </div>
+                                      )}
+                                      {log.metadata?.screenResolution && (
+                                        <div className="flex items-center gap-2">
+                                          <Monitor className="w-3 h-3 text-indigo-400" />
+                                          <span className="text-gray-500">Screen:</span>
+                                          <span className="text-indigo-400">{log.metadata.screenResolution}</span>
+                                        </div>
                                       )}
                                     </div>
-                                    {log.metadata.path && (
-                                      <div className="flex items-center gap-2 text-[9px]">
-                                        <span className="text-gray-500">Path:</span>
-                                        <span className="text-gray-400 font-mono bg-black/30 px-1 rounded">{log.metadata.path}</span>
+                                    {log.details && (
+                                      <div className="pt-2 border-t border-white/5">
+                                        <span className="text-gray-500">Details: </span>
+                                        <span className="text-gray-300">{log.details}</span>
                                       </div>
                                     )}
-                                  </div>
+                                  </motion.div>
                                 )}
-
-                                {/* Session Info */}
-                                {log.metadata?.sessionId && (
-                                  <div className="pt-2 border-t border-white/5">
-                                    <div className="flex items-center gap-2">
-                                      <Hash className="w-3 h-3 text-gray-500" />
-                                      <span className="text-gray-500">Session ID:</span>
-                                      <span className="text-gray-400 font-mono text-[9px] bg-black/30 px-1 rounded">{log.metadata.sessionId}</span>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Details */}
-                                {log.details && (
-                                  <div className="pt-2 border-t border-white/5">
-                                    <span className="text-gray-500">📋 Details: </span>
-                                    <span className="text-gray-300">{log.details}</span>
-                                  </div>
-                                )}
-
-                                {/* User Agent */}
-                                {log.metadata?.userAgent && (
-                                  <div className="pt-2 border-t border-white/5">
-                                    <span className="text-gray-500">🤖 User Agent: </span>
-                                    <span className="text-gray-600 text-[8px] break-all font-mono">{log.metadata.userAgent}</span>
-                                  </div>
-                                )}
-
-                                {/* Referrer */}
-                                {log.metadata?.referrer && (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-gray-500">🔗 Referrer:</span>
-                                    <span className="text-gray-400 text-[9px]">{log.metadata.referrer}</span>
-                                  </div>
-                                )}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </motion.div>
-                      ))
-                    )}
-                    
-                    {/* Terminal cursor line */}
-                    <div className="flex items-center gap-2 mt-3 text-green-400 pt-3 border-t border-white/10">
-                      <span className="text-green-500">root@futurepoint</span>
-                      <span className="text-gray-500">:</span>
-                      <span className="text-blue-400">~</span>
-                      <span className="text-gray-500">$</span>
-                      <span className="animate-pulse text-green-400">▋</span>
+                              </AnimatePresence>
+                            </motion.div>
+                          ))}
+                          
+                          {/* Terminal prompt at bottom */}
+                          <div className="flex items-center gap-2 mt-4 pt-3 border-t border-white/10">
+                            <span className="text-green-500">root@futurepoint</span>
+                            <span className="text-gray-500">:</span>
+                            <span className="text-blue-400">~</span>
+                            <span className="text-gray-500">$</span>
+                            <button 
+                              onClick={() => setShowCommandMode(true)}
+                              className="text-gray-500 hover:text-green-400 transition-colors text-[10px] underline decoration-dotted underline-offset-2"
+                            >
+                              Click here or press CMD button for interactive terminal
+                            </button>
+                            <span className="animate-pulse text-green-400">▋</span>
+                          </div>
+                        </>
+                      )}
                     </div>
-                  </div>
+                  )}
                 </div>
                 
-                {/* Enhanced Status bar */}
+                {/* Status bar */}
                 <div className="bg-gradient-to-r from-[#1a1b26] to-[#24283b] border-t border-white/10 px-3 py-1.5 flex items-center justify-between text-[10px] text-gray-500 font-mono">
                   <div className="flex items-center gap-4">
                     <span className="flex items-center gap-1.5">
@@ -745,20 +1217,14 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
                     </span>
                     <span className="flex items-center gap-1">
                       <Activity className="w-3 h-3" />
-                      {filteredLogs.length} entries
+                      {logs.length} logs
                     </span>
-                    <span className="hidden md:flex items-center gap-1 text-green-500">
-                      <CheckCircle className="w-3 h-3" />
-                      {stats.success}
-                    </span>
-                    <span className="hidden md:flex items-center gap-1 text-red-500">
-                      <XCircle className="w-3 h-3" />
-                      {stats.errors}
-                    </span>
-                    <span className="hidden md:flex items-center gap-1 text-yellow-500">
-                      <AlertTriangle className="w-3 h-3" />
-                      {stats.warnings}
-                    </span>
+                    {showCommandMode && (
+                      <span className="text-green-400 bg-green-500/20 px-2 py-0.5 rounded flex items-center gap-1">
+                        <Terminal className="w-3 h-3" />
+                        INTERACTIVE
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="hidden md:block text-gray-600">{formatDate(currentTime)}</span>
