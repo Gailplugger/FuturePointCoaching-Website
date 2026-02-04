@@ -204,6 +204,13 @@ export default function AdminDashboardPage() {
             ))}
           </StaggerContainer>
 
+          {/* Admin Logs Terminal - NOW AT TOP FOR VISIBILITY */}
+          <SlideUp delay={0.1}>
+            <div className="mb-8">
+              <AdminLogsTerminal />
+            </div>
+          </SlideUp>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Upload Card - 2 columns */}
             <div className="lg:col-span-2">
@@ -301,13 +308,6 @@ export default function AdminDashboardPage() {
                 </div>
               </CardContent>
             </Card>
-          </SlideUp>
-
-          {/* Admin Logs Terminal */}
-          <SlideUp delay={0.3}>
-            <div className="mt-8">
-              <AdminLogsTerminal />
-            </div>
           </SlideUp>
         </main>
 
