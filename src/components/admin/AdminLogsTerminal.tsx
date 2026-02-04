@@ -80,7 +80,22 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
   // Focus input when command mode is enabled
   useEffect(() => {
     if (showCommandMode && inputRef.current) {
-      inputRef.current.focus();
+      // Use setTimeout to ensure DOM is ready
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    }
+  }, [showCommandMode]);
+
+  // Keep focusing the input in command mode
+  useEffect(() => {
+    if (showCommandMode) {
+      const interval = setInterval(() => {
+        if (inputRef.current && document.activeElement !== inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 500);
+      return () => clearInterval(interval);
     }
   }, [showCommandMode]);
 
@@ -949,10 +964,16 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
               <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
                 <div 
                   ref={terminalRef}
-                  className={`flex-1 bg-[#0d1117] font-mono text-[11px] overflow-y-auto p-3 ${
+                  className={`flex-1 bg-[#0d1117] font-mono text-[11px] overflow-y-auto p-3 cursor-text ${
                     fullscreen ? 'max-h-full' : 'max-h-[400px] min-h-[300px]'
                   }`}
-                  onClick={() => showCommandMode && inputRef.current?.focus()}
+                  onClick={(e) => {
+                    if (showCommandMode && inputRef.current) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      inputRef.current.focus();
+                    }
+                  }}
                 >
                   {showCommandMode ? (
                     /* ═══════════════════════ COMMAND MODE ═══════════════════════ */
@@ -993,24 +1014,39 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
                       ))}
 
                       {/* Input line */}
-                      <div className="flex items-center gap-2 pt-2 border-t border-white/5">
-                        <span className="text-green-500">root@futurepoint</span>
-                        <span className="text-gray-500">:</span>
-                        <span className="text-blue-400">~</span>
-                        <span className="text-gray-500">$</span>
+                      <div 
+                        className="flex items-center gap-2 pt-2 border-t border-white/5 sticky bottom-0 bg-[#0d1117] pb-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          inputRef.current?.focus();
+                        }}
+                      >
+                        <span className="text-green-500 select-none">root@futurepoint</span>
+                        <span className="text-gray-500 select-none">:</span>
+                        <span className="text-blue-400 select-none">~</span>
+                        <span className="text-gray-500 select-none">$</span>
                         <input
                           ref={inputRef}
                           type="text"
                           value={commandInput}
                           onChange={(e) => setCommandInput(e.target.value)}
                           onKeyDown={handleKeyDown}
-                          className="flex-1 bg-transparent outline-none text-white caret-green-400 placeholder-gray-600"
+                          onBlur={() => {
+                            // Re-focus after a short delay if still in command mode
+                            if (showCommandMode) {
+                              setTimeout(() => inputRef.current?.focus(), 10);
+                            }
+                          }}
+                          className="flex-1 bg-transparent outline-none text-white caret-green-400 placeholder-gray-600 border-none focus:ring-0 focus:outline-none min-w-0"
                           placeholder="Type a command... (try 'help')"
                           autoFocus
                           spellCheck={false}
                           autoComplete="off"
+                          autoCapitalize="off"
+                          autoCorrect="off"
+                          style={{ WebkitAppearance: 'none' }}
                         />
-                        <span className="animate-pulse text-green-400">▋</span>
+                        <span className="animate-pulse text-green-400 select-none">▋</span>
                       </div>
                     </div>
                   ) : (
