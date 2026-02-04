@@ -135,7 +135,7 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
       type,
       timestamp: new Date()
     };
-    setCommandOutputs(prev => [...prev, newOutput]);
+    setCommandOutputs((prev: CommandOutput[]) => [...prev, newOutput]);
   };
 
   // Process terminal commands
@@ -147,7 +147,7 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
 
     // Add to history
     if (cmd.trim()) {
-      setCommandHistory(prev => [...prev, cmd]);
+      setCommandHistory((prev: string[]) => [...prev, cmd]);
     }
     setHistoryIndex(-1);
 
@@ -201,7 +201,7 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
       case 'ls':
       case 'list':
         if (args[0] === 'logins' || args[0] === 'login') {
-          const logins = logs.filter(l => l.action === 'LOGIN');
+          const logins = logs.filter((l: AdminLog) => l.action === 'LOGIN');
           if (logins.length === 0) {
             addCommandOutput(cmd, ['⚠️ No login events found.'], 'warning');
           } else {
@@ -210,7 +210,7 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
               '═'.repeat(75),
               '  #  │ TIME     │ USER            │ IP ADDRESS      │ LOCATION',
               '─'.repeat(75),
-              ...logins.map((l, i) => 
+              ...logins.map((l: AdminLog, i: number) => 
                 `  ${(i + 1).toString().padStart(2)} │ ${formatTime(l.timestamp)} │ @${(l.user || 'unknown').padEnd(14)} │ ${(l.metadata?.ip || 'N/A').padEnd(15)} │ ${l.metadata?.location || 'Unknown'}`
               ),
               '═'.repeat(75),
@@ -219,7 +219,7 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
             addCommandOutput(cmd, output, 'success');
           }
         } else if (args[0] === 'uploads' || args[0] === 'upload') {
-          const uploads = logs.filter(l => l.action === 'UPLOAD');
+          const uploads = logs.filter((l: AdminLog) => l.action === 'UPLOAD');
           if (uploads.length === 0) {
             addCommandOutput(cmd, ['⚠️ No upload events found.'], 'warning');
           } else {
@@ -228,7 +228,7 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
               '═'.repeat(80),
               '  #  │ TIME     │ USER            │ FILE NAME                    │ SIZE',
               '─'.repeat(80),
-              ...uploads.map((l, i) => 
+              ...uploads.map((l: AdminLog, i: number) => 
                 `  ${(i + 1).toString().padStart(2)} │ ${formatTime(l.timestamp)} │ @${(l.user || 'unknown').padEnd(14)} │ ${(l.metadata?.fileName || 'N/A').substring(0, 28).padEnd(28)} │ ${l.metadata?.fileSize || 'N/A'}`
               ),
               '═'.repeat(80),
@@ -236,14 +236,14 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
             addCommandOutput(cmd, output, 'success');
           }
         } else if (args[0] === 'errors' || args[0] === 'error') {
-          const errors = logs.filter(l => l.type === 'error');
+          const errors = logs.filter((l: AdminLog) => l.type === 'error');
           if (errors.length === 0) {
             addCommandOutput(cmd, ['✅ No errors found. System running smoothly!'], 'success');
           } else {
             const output = [
               `❌ Found ${errors.length} error(s):`,
               '═'.repeat(80),
-              ...errors.map((l, i) => 
+              ...errors.map((l: AdminLog, i: number) => 
                 `  [${i + 1}] ${formatTime(l.timestamp)} │ ${l.action.padEnd(12)} │ ${l.message.substring(0, 50)}...`
               ),
               '═'.repeat(80),
@@ -251,7 +251,7 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
             addCommandOutput(cmd, output, 'error');
           }
         } else if (args[0] === 'users' || args[0] === 'user') {
-          const users = [...new Set(logs.filter(l => l.user).map(l => l.user))];
+          const users: string[] = Array.from(new Set(logs.filter((l: AdminLog) => l.user).map((l: AdminLog) => l.user as string)));
           if (users.length === 0) {
             addCommandOutput(cmd, ['⚠️ No users found in logs.'], 'warning');
           } else {
@@ -260,8 +260,8 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
               '═'.repeat(65),
               '  #  │ USERNAME         │ ACTIONS │ LAST ACTIVITY',
               '─'.repeat(65),
-              ...users.map((u, i) => {
-                const userLogs = logs.filter(l => l.user === u);
+              ...users.map((u: string, i: number) => {
+                const userLogs = logs.filter((l: AdminLog) => l.user === u);
                 const lastLog = userLogs[0];
                 return `  ${(i + 1).toString().padStart(2)} │ @${(u || '').padEnd(15)} │ ${userLogs.length.toString().padStart(7)} │ ${formatFullTime(lastLog.timestamp)}`;
               }),
@@ -271,7 +271,7 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
             addCommandOutput(cmd, output, 'success');
           }
         } else if (args[0] === 'ips' || args[0] === 'ip') {
-          const ips = [...new Set(logs.filter(l => l.metadata?.ip).map(l => l.metadata?.ip))];
+          const ips: string[] = Array.from(new Set(logs.filter((l: AdminLog) => l.metadata?.ip).map((l: AdminLog) => l.metadata?.ip as string)));
           if (ips.length === 0) {
             addCommandOutput(cmd, ['⚠️ No IP addresses found in logs.'], 'warning');
           } else {
@@ -280,9 +280,9 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
               '═'.repeat(70),
               '  #  │ IP ADDRESS       │ LOCATION                    │ REQUESTS',
               '─'.repeat(70),
-              ...ips.map((ip, i) => {
-                const ipLogs = logs.filter(l => l.metadata?.ip === ip);
-                const location = ipLogs.find(l => l.metadata?.location)?.metadata?.location || 'Unknown';
+              ...ips.map((ip: string, i: number) => {
+                const ipLogs = logs.filter((l: AdminLog) => l.metadata?.ip === ip);
+                const location = ipLogs.find((l: AdminLog) => l.metadata?.location)?.metadata?.location || 'Unknown';
                 return `  ${(i + 1).toString().padStart(2)} │ ${(ip || '').padEnd(16)} │ ${location.substring(0, 27).padEnd(27)} │ ${ipLogs.length.toString().padStart(8)}`;
               }),
               '═'.repeat(70),
@@ -331,9 +331,9 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
           
           let matchedLogs: AdminLog[];
           if (isIP) {
-            matchedLogs = logs.filter(l => l.metadata?.ip?.toLowerCase().includes(searchTerm));
+            matchedLogs = logs.filter((l: AdminLog) => l.metadata?.ip?.toLowerCase().includes(searchTerm));
           } else {
-            matchedLogs = logs.filter(l => l.user?.toLowerCase().includes(searchTerm));
+            matchedLogs = logs.filter((l: AdminLog) => l.user?.toLowerCase().includes(searchTerm));
           }
 
           if (matchedLogs.length === 0) {
@@ -376,15 +376,15 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
               '╠══════════════════════════════════════════════════════════════════════╣',
               '║  🎯 ACTIVITY BREAKDOWN                                               ║',
               `║  ────────────────────────────────────────────────────────────────────║`,
-              `║  🔐 Logins: ${matchedLogs.filter(l => l.action === 'LOGIN').length.toString().padEnd(57)}║`,
-              `║  📤 Uploads: ${matchedLogs.filter(l => l.action === 'UPLOAD').length.toString().padEnd(56)}║`,
-              `║  🗑️  Deletes: ${matchedLogs.filter(l => l.action === 'DELETE').length.toString().padEnd(55)}║`,
-              `║  ❌ Errors: ${matchedLogs.filter(l => l.type === 'error').length.toString().padEnd(57)}║`,
-              `║  ⚠️  Warnings: ${matchedLogs.filter(l => l.type === 'warning').length.toString().padEnd(54)}║`,
+              `║  🔐 Logins: ${matchedLogs.filter((l: AdminLog) => l.action === 'LOGIN').length.toString().padEnd(57)}║`,
+              `║  📤 Uploads: ${matchedLogs.filter((l: AdminLog) => l.action === 'UPLOAD').length.toString().padEnd(56)}║`,
+              `║  🗑️  Deletes: ${matchedLogs.filter((l: AdminLog) => l.action === 'DELETE').length.toString().padEnd(55)}║`,
+              `║  ❌ Errors: ${matchedLogs.filter((l: AdminLog) => l.type === 'error').length.toString().padEnd(57)}║`,
+              `║  ⚠️  Warnings: ${matchedLogs.filter((l: AdminLog) => l.type === 'warning').length.toString().padEnd(54)}║`,
               '╠══════════════════════════════════════════════════════════════════════╣',
               '║  📜 RECENT ACTIVITY (Last 5)                                         ║',
               `║  ────────────────────────────────────────────────────────────────────║`,
-              ...matchedLogs.slice(0, 5).map(l => 
+              ...matchedLogs.slice(0, 5).map((l: AdminLog) => 
                 `║  • ${formatTime(l.timestamp)} │ ${l.action.padEnd(12)} │ ${l.message.substring(0, 40).padEnd(40)}║`
               ),
               '╚══════════════════════════════════════════════════════════════════════╝',
@@ -436,14 +436,14 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
       case 'stats':
       case 'statistics':
         const totalLogs = logs.length;
-        const loginCount = logs.filter(l => l.action === 'LOGIN').length;
-        const uploadCount = logs.filter(l => l.action === 'UPLOAD').length;
-        const deleteCount = logs.filter(l => l.action === 'DELETE').length;
-        const errorCount = logs.filter(l => l.type === 'error').length;
-        const warningCount = logs.filter(l => l.type === 'warning').length;
-        const successCount = logs.filter(l => l.type === 'success').length;
-        const uniqueUsers = [...new Set(logs.filter(l => l.user).map(l => l.user))].length;
-        const uniqueIPs = [...new Set(logs.filter(l => l.metadata?.ip).map(l => l.metadata?.ip))].length;
+        const loginCount = logs.filter((l: AdminLog) => l.action === 'LOGIN').length;
+        const uploadCount = logs.filter((l: AdminLog) => l.action === 'UPLOAD').length;
+        const deleteCount = logs.filter((l: AdminLog) => l.action === 'DELETE').length;
+        const errorCount = logs.filter((l: AdminLog) => l.type === 'error').length;
+        const warningCount = logs.filter((l: AdminLog) => l.type === 'warning').length;
+        const successCount = logs.filter((l: AdminLog) => l.type === 'success').length;
+        const uniqueUsers = Array.from(new Set(logs.filter((l: AdminLog) => l.user).map((l: AdminLog) => l.user))).length;
+        const uniqueIPs = Array.from(new Set(logs.filter((l: AdminLog) => l.metadata?.ip).map((l: AdminLog) => l.metadata?.ip))).length;
         
         const healthStatus = errorCount > 10 ? '🔴 CRITICAL' : errorCount > 5 ? '🟡 ATTENTION' : '🟢 HEALTHY';
         
@@ -546,7 +546,7 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
           addCommandOutput(cmd, ['⚠️ Usage: find <keyword>', 'Example: find login', 'Example: find error'], 'warning');
         } else {
           const keyword = args.join(' ').toLowerCase();
-          const found = logs.filter(l => 
+          const found = logs.filter((l: AdminLog) => 
             l.message.toLowerCase().includes(keyword) ||
             l.user?.toLowerCase().includes(keyword) ||
             l.action.toLowerCase().includes(keyword) ||
@@ -558,7 +558,7 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
             addCommandOutput(cmd, [
               `🔍 Found ${found.length} log(s) matching "${args.join(' ')}":`,
               '═'.repeat(75),
-              ...found.slice(0, 20).map((l, i) => 
+              ...found.slice(0, 20).map((l: AdminLog, i: number) => 
                 `  [${(i + 1).toString().padStart(2)}] ${formatTime(l.timestamp)} │ ${l.action.padEnd(12)} │ ${l.message.substring(0, 40)}...`
               ),
               found.length > 20 ? `  ... and ${found.length - 20} more results` : '',
@@ -574,7 +574,7 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
         } else {
           try {
             const pattern = new RegExp(args.join(' '), 'i');
-            const found = logs.filter(l => 
+            const found = logs.filter((l: AdminLog) => 
               pattern.test(l.message) || 
               pattern.test(l.user || '') ||
               pattern.test(l.action)
@@ -585,7 +585,7 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
               addCommandOutput(cmd, [
                 `🔍 grep: ${found.length} match(es) for /${args.join(' ')}/i`,
                 '═'.repeat(70),
-                ...found.slice(0, 15).map((l) => 
+                ...found.slice(0, 15).map((l: AdminLog) => 
                   `  ${formatTime(l.timestamp)} │ ${l.action.padEnd(12)} │ ${l.message.substring(0, 45)}`
                 ),
                 found.length > 15 ? `  ... and ${found.length - 15} more` : '',
@@ -851,11 +851,11 @@ export function AdminLogsTerminal({ className = '', defaultExpanded = true }: Ad
   // Stats
   const stats = {
     total: logs.length,
-    success: logs.filter(l => l.type === 'success').length,
-    errors: logs.filter(l => l.type === 'error').length,
-    warnings: logs.filter(l => l.type === 'warning').length,
-    logins: logs.filter(l => l.action === 'LOGIN').length,
-    uploads: logs.filter(l => l.action === 'UPLOAD').length,
+    success: logs.filter((l: AdminLog) => l.type === 'success').length,
+    errors: logs.filter((l: AdminLog) => l.type === 'error').length,
+    warnings: logs.filter((l: AdminLog) => l.type === 'warning').length,
+    logins: logs.filter((l: AdminLog) => l.action === 'LOGIN').length,
+    uploads: logs.filter((l: AdminLog) => l.action === 'UPLOAD').length,
   };
 
   const containerClass = fullscreen 
