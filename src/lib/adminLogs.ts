@@ -3,32 +3,63 @@
 export interface AdminLog {
   id: string;
   timestamp: Date;
-  type: 'info' | 'success' | 'warning' | 'error';
-  action: 'LOGIN' | 'LOGOUT' | 'UPLOAD' | 'DELETE' | 'ADMIN_ADD' | 'ADMIN_REMOVE' | 'SYSTEM' | 'SESSION' | 'ACCESS';
+  type: 'info' | 'success' | 'warning' | 'error' | 'critical';
+  action: 'LOGIN' | 'LOGOUT' | 'UPLOAD' | 'DELETE' | 'ADMIN_ADD' | 'ADMIN_REMOVE' | 'SYSTEM' | 'SESSION' | 'ACCESS' | 'SECURITY' | 'API' | 'ERROR';
   message: string;
   user?: string;
   details?: string;
   metadata?: {
     ip?: string;
+    ipv6?: string;
     userAgent?: string;
     browser?: string;
+    browserVersion?: string;
     os?: string;
+    osVersion?: string;
     device?: string;
+    deviceType?: string;
     location?: string;
+    country?: string;
+    city?: string;
+    timezone?: string;
+    language?: string;
+    screenResolution?: string;
+    colorDepth?: string;
+    cookiesEnabled?: boolean;
+    javaEnabled?: boolean;
+    platform?: string;
+    vendor?: string;
+    connection?: string;
+    memory?: string;
+    cpuCores?: number;
+    touchSupport?: boolean;
     fileName?: string;
     fileSize?: string;
+    fileType?: string;
     classNo?: string;
     subject?: string;
     path?: string;
+    sha?: string;
+    commitUrl?: string;
     sessionId?: string;
     duration?: string;
     statusCode?: number;
     method?: string;
     endpoint?: string;
+    responseTime?: string;
+    requestId?: string;
+    errorStack?: string;
+    referrer?: string;
+    pageUrl?: string;
+    isSuperAdmin?: boolean;
+    role?: string;
+    loginMethod?: string;
+    tokenExpiry?: string;
+    lastActivity?: string;
   };
 }
 
-const MAX_LOGS = 200;
+const MAX_LOGS = 500;
 
 // In-memory logs storage (persisted to sessionStorage)
 let logs: AdminLog[] = [];
@@ -62,7 +93,7 @@ export function saveLogs(): void {
     sessionStorage.setItem(getStorageKey(), JSON.stringify(logs));
   } catch {
     // Storage full, clear old logs
-    logs = logs.slice(-100);
+    logs = logs.slice(-250);
     sessionStorage.setItem(getStorageKey(), JSON.stringify(logs));
   }
 }
@@ -100,52 +131,99 @@ export function clearLogs(): void {
   }
 }
 
-// Get browser/device info from user agent
-export function parseUserAgent(userAgent?: string): { browser: string; os: string; device: string } {
+// Comprehensive browser/device info from user agent
+export function parseUserAgent(userAgent?: string): { 
+  browser: string; 
+  browserVersion: string;
+  os: string; 
+  osVersion: string;
+  device: string;
+  deviceType: string;
+} {
   if (!userAgent) {
     userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown';
   }
 
   let browser = 'Unknown';
+  let browserVersion = '';
   let os = 'Unknown';
-  let device = 'Desktop';
+  let osVersion = '';
+  let device = 'Unknown';
+  let deviceType = 'Desktop';
 
-  // Detect browser
-  if (userAgent.includes('Firefox')) {
-    browser = 'Firefox';
-  } else if (userAgent.includes('Edg')) {
-    browser = 'Edge';
-  } else if (userAgent.includes('Chrome')) {
-    browser = 'Chrome';
-  } else if (userAgent.includes('Safari')) {
-    browser = 'Safari';
-  } else if (userAgent.includes('Opera') || userAgent.includes('OPR')) {
+  // Detect browser and version
+  if (userAgent.includes('Firefox/')) {
+    browser = 'Mozilla Firefox';
+    browserVersion = userAgent.match(/Firefox\/(\d+\.?\d*)/)?.[1] || '';
+  } else if (userAgent.includes('Edg/')) {
+    browser = 'Microsoft Edge';
+    browserVersion = userAgent.match(/Edg\/(\d+\.?\d*)/)?.[1] || '';
+  } else if (userAgent.includes('Chrome/')) {
+    browser = 'Google Chrome';
+    browserVersion = userAgent.match(/Chrome\/(\d+\.?\d*)/)?.[1] || '';
+  } else if (userAgent.includes('Safari/') && !userAgent.includes('Chrome')) {
+    browser = 'Apple Safari';
+    browserVersion = userAgent.match(/Version\/(\d+\.?\d*)/)?.[1] || '';
+  } else if (userAgent.includes('Opera') || userAgent.includes('OPR/')) {
     browser = 'Opera';
+    browserVersion = userAgent.match(/(?:Opera|OPR)\/(\d+\.?\d*)/)?.[1] || '';
   }
 
-  // Detect OS
+  // Detect OS and version
   if (userAgent.includes('Windows NT 10')) {
-    os = 'Windows 10/11';
-  } else if (userAgent.includes('Windows')) {
     os = 'Windows';
+    osVersion = '10/11';
+  } else if (userAgent.includes('Windows NT 6.3')) {
+    os = 'Windows';
+    osVersion = '8.1';
+  } else if (userAgent.includes('Windows NT 6.2')) {
+    os = 'Windows';
+    osVersion = '8';
+  } else if (userAgent.includes('Windows NT 6.1')) {
+    os = 'Windows';
+    osVersion = '7';
   } else if (userAgent.includes('Mac OS X')) {
     os = 'macOS';
+    osVersion = userAgent.match(/Mac OS X (\d+[._]\d+)/)?.[1]?.replace('_', '.') || '';
   } else if (userAgent.includes('Linux')) {
     os = 'Linux';
+    if (userAgent.includes('Ubuntu')) osVersion = 'Ubuntu';
+    else if (userAgent.includes('Fedora')) osVersion = 'Fedora';
   } else if (userAgent.includes('Android')) {
     os = 'Android';
-  } else if (userAgent.includes('iOS') || userAgent.includes('iPhone') || userAgent.includes('iPad')) {
+    osVersion = userAgent.match(/Android (\d+\.?\d*)/)?.[1] || '';
+  } else if (userAgent.includes('iPhone') || userAgent.includes('iPad')) {
     os = 'iOS';
+    osVersion = userAgent.match(/OS (\d+[._]\d+)/)?.[1]?.replace('_', '.') || '';
   }
 
-  // Detect device type
-  if (userAgent.includes('Mobile') || userAgent.includes('Android')) {
-    device = 'Mobile';
-  } else if (userAgent.includes('Tablet') || userAgent.includes('iPad')) {
-    device = 'Tablet';
+  // Detect device type and name
+  if (userAgent.includes('iPhone')) {
+    device = 'iPhone';
+    deviceType = 'Mobile';
+  } else if (userAgent.includes('iPad')) {
+    device = 'iPad';
+    deviceType = 'Tablet';
+  } else if (userAgent.includes('Android')) {
+    if (userAgent.includes('Mobile')) {
+      device = 'Android Phone';
+      deviceType = 'Mobile';
+    } else {
+      device = 'Android Tablet';
+      deviceType = 'Tablet';
+    }
+  } else if (userAgent.includes('Windows')) {
+    device = 'Windows PC';
+    deviceType = 'Desktop';
+  } else if (userAgent.includes('Macintosh')) {
+    device = 'Mac';
+    deviceType = 'Desktop';
+  } else if (userAgent.includes('Linux')) {
+    device = 'Linux PC';
+    deviceType = 'Desktop';
   }
 
-  return { browser, os, device };
+  return { browser, browserVersion, os, osVersion, device, deviceType };
 }
 
 // Generate session ID
@@ -154,39 +232,71 @@ export function getSessionId(): string {
   
   let sessionId = sessionStorage.getItem('fp_session_id');
   if (!sessionId) {
-    sessionId = `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    sessionId = `SID_${Date.now().toString(36).toUpperCase()}_${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
     sessionStorage.setItem('fp_session_id', sessionId);
   }
   return sessionId;
 }
 
-// Get client metadata
+// Get comprehensive client metadata
 export function getClientMetadata(): Partial<AdminLog['metadata']> {
   if (typeof window === 'undefined') return {};
   
-  const { browser, os, device } = parseUserAgent();
+  const { browser, browserVersion, os, osVersion, device, deviceType } = parseUserAgent();
+  const nav = navigator as Navigator & { 
+    deviceMemory?: number; 
+    hardwareConcurrency?: number;
+    connection?: { effectiveType?: string };
+  };
   
   return {
     userAgent: navigator.userAgent,
     browser,
+    browserVersion,
     os,
+    osVersion,
     device,
+    deviceType,
     sessionId: getSessionId(),
+    language: navigator.language,
+    platform: navigator.platform,
+    vendor: navigator.vendor,
+    cookiesEnabled: navigator.cookieEnabled,
+    screenResolution: `${screen.width}x${screen.height}`,
+    colorDepth: `${screen.colorDepth}-bit`,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    memory: nav.deviceMemory ? `${nav.deviceMemory}GB` : undefined,
+    cpuCores: nav.hardwareConcurrency,
+    connection: nav.connection?.effectiveType,
+    touchSupport: 'ontouchstart' in window,
+    referrer: document.referrer || 'Direct',
+    pageUrl: window.location.href,
   };
 }
 
 // Helper functions for common log types
-export function logLogin(username: string, ip?: string, additionalMeta?: Partial<AdminLog['metadata']>): AdminLog {
+export function logLogin(
+  username: string, 
+  ip?: string, 
+  isSuperAdmin?: boolean,
+  additionalMeta?: Partial<AdminLog['metadata']>
+): AdminLog {
   const clientMeta = getClientMetadata();
+  const role = isSuperAdmin ? 'SUPER ADMIN' : 'ADMIN';
+  
   return addLog({
     type: 'success',
     action: 'LOGIN',
-    message: `Authentication successful for ${username}`,
+    message: `🔐 AUTHENTICATION SUCCESSFUL`,
     user: username,
-    details: `Session initiated from ${ip || 'Unknown IP'}`,
+    details: `User "${username}" authenticated as ${role} from ${ip || 'Unknown IP'}`,
     metadata: {
       ...clientMeta,
       ip: ip || 'Fetching...',
+      isSuperAdmin,
+      role,
+      loginMethod: 'GitHub PAT',
+      tokenExpiry: '2 hours',
       ...additionalMeta,
     }
   });
@@ -196,10 +306,10 @@ export function logLoginAttempt(username: string, success: boolean, ip?: string,
   const clientMeta = getClientMetadata();
   return addLog({
     type: success ? 'success' : 'error',
-    action: 'LOGIN',
-    message: success ? `Login successful: ${username}` : `Login failed: ${username}`,
+    action: success ? 'LOGIN' : 'SECURITY',
+    message: success ? `✅ LOGIN SUCCESSFUL` : `❌ LOGIN FAILED`,
     user: username,
-    details: reason || (success ? 'Credentials verified' : 'Authentication rejected'),
+    details: reason || (success ? 'Credentials verified successfully' : 'Authentication rejected'),
     metadata: {
       ...clientMeta,
       ip: ip || 'Unknown',
@@ -215,41 +325,59 @@ export function logLogout(username: string): AdminLog {
   
   if (sessionStart) {
     const durationMs = Date.now() - parseInt(sessionStart, 10);
-    const minutes = Math.floor(durationMs / 60000);
+    const seconds = Math.floor(durationMs / 1000);
+    const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
-    duration = hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
+    if (hours > 0) {
+      duration = `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+    } else if (minutes > 0) {
+      duration = `${minutes}m ${seconds % 60}s`;
+    } else {
+      duration = `${seconds}s`;
+    }
   }
   
   return addLog({
     type: 'info',
     action: 'LOGOUT',
-    message: `Session terminated for ${username}`,
+    message: `🚪 SESSION TERMINATED`,
     user: username,
-    details: `Session duration: ${duration}`,
+    details: `User "${username}" logged out | Session Duration: ${duration}`,
     metadata: {
       ...clientMeta,
       duration,
+      lastActivity: new Date().toISOString(),
     }
   });
 }
 
-export function logUpload(username: string, fileName: string, classNo: string, subject: string, fileSize?: number): AdminLog {
+export function logUpload(
+  username: string, 
+  fileName: string, 
+  classNo: string, 
+  subject: string, 
+  fileSize?: number,
+  commitUrl?: string
+): AdminLog {
   const clientMeta = getClientMetadata();
   const fileSizeStr = fileSize ? formatBytes(fileSize) : 'Unknown';
+  const fileType = fileName.split('.').pop()?.toUpperCase() || 'Unknown';
   
   return addLog({
     type: 'success',
     action: 'UPLOAD',
-    message: `File uploaded: ${fileName}`,
+    message: `📤 FILE UPLOADED SUCCESSFULLY`,
     user: username,
-    details: `Class ${classNo} • ${subject} • Size: ${fileSizeStr}`,
+    details: `"${fileName}" uploaded to Class ${classNo}/${subject}`,
     metadata: {
       ...clientMeta,
       fileName,
       fileSize: fileSizeStr,
+      fileType,
       classNo,
       subject,
-      path: `notes/class-${classNo}/${subject}/${fileName}`,
+      path: `notes/class-${classNo}/${subject.toLowerCase()}/${fileName}`,
+      commitUrl,
     }
   });
 }
@@ -258,45 +386,51 @@ export function logUploadError(username: string, fileName: string, error: string
   const clientMeta = getClientMetadata();
   return addLog({
     type: 'error',
-    action: 'UPLOAD',
-    message: `Upload failed: ${fileName}`,
+    action: 'ERROR',
+    message: `❌ UPLOAD FAILED`,
     user: username,
-    details: error,
+    details: `Failed to upload "${fileName}" - ${error}`,
     metadata: {
       ...clientMeta,
       fileName,
       fileSize: fileSize ? formatBytes(fileSize) : 'Unknown',
       statusCode: 500,
+      errorStack: error,
     }
   });
 }
 
-export function logDelete(username: string, fileName: string, path?: string): AdminLog {
+export function logDelete(username: string, fileName: string, path?: string, classNo?: string, subject?: string): AdminLog {
   const clientMeta = getClientMetadata();
   return addLog({
     type: 'warning',
     action: 'DELETE',
-    message: `File deleted: ${fileName}`,
+    message: `🗑️ FILE DELETED`,
     user: username,
-    details: path ? `Path: ${path}` : 'Removed from repository',
+    details: `"${fileName}" permanently removed from repository`,
     metadata: {
       ...clientMeta,
       fileName,
       path,
+      classNo,
+      subject,
     }
   });
 }
 
 export function logAdminAdd(username: string, addedUser: string, isSuperAdmin: boolean): AdminLog {
   const clientMeta = getClientMetadata();
+  const role = isSuperAdmin ? 'SUPER ADMIN' : 'ADMIN';
   return addLog({
     type: 'success',
     action: 'ADMIN_ADD',
-    message: `New ${isSuperAdmin ? 'Super Admin' : 'Admin'} added: ${addedUser}`,
+    message: `👤 NEW ${role} ADDED`,
     user: username,
-    details: `Granted by ${username} at ${new Date().toLocaleString()}`,
+    details: `"${addedUser}" granted ${role} privileges by "${username}"`,
     metadata: {
       ...clientMeta,
+      isSuperAdmin,
+      role,
     }
   });
 }
@@ -306,29 +440,37 @@ export function logAdminRemove(username: string, removedUser: string): AdminLog 
   return addLog({
     type: 'warning',
     action: 'ADMIN_REMOVE',
-    message: `Admin access revoked: ${removedUser}`,
+    message: `👤 ADMIN ACCESS REVOKED`,
     user: username,
-    details: `Revoked by ${username}`,
+    details: `"${removedUser}" admin privileges revoked by "${username}"`,
     metadata: {
       ...clientMeta,
     }
   });
 }
 
-export function logSystem(message: string, type: AdminLog['type'] = 'info', details?: string): AdminLog {
+export function logSystem(message: string, type: AdminLog['type'] = 'info', details?: string, meta?: Partial<AdminLog['metadata']>): AdminLog {
   const clientMeta = getClientMetadata();
+  const icons: Record<string, string> = {
+    info: 'ℹ️',
+    success: '✅',
+    warning: '⚠️',
+    error: '❌',
+    critical: '🚨',
+  };
   return addLog({
     type,
     action: 'SYSTEM',
-    message,
-    details: details || `System event at ${new Date().toLocaleString()}`,
+    message: `${icons[type] || '📋'} ${message}`,
+    details: details || `System event recorded at ${new Date().toLocaleString()}`,
     metadata: {
       ...clientMeta,
+      ...meta,
     }
   });
 }
 
-export function logSession(action: 'start' | 'resume' | 'expire', username: string): AdminLog {
+export function logSession(action: 'start' | 'resume' | 'expire' | 'active', username: string): AdminLog {
   const clientMeta = getClientMetadata();
   
   if (action === 'start') {
@@ -336,9 +478,17 @@ export function logSession(action: 'start' | 'resume' | 'expire', username: stri
   }
   
   const messages = {
-    start: `Session started for ${username}`,
-    resume: `Session resumed for ${username}`,
-    expire: `Session expired for ${username}`,
+    start: `🟢 SESSION STARTED`,
+    resume: `🔄 SESSION RESUMED`,
+    expire: `🔴 SESSION EXPIRED`,
+    active: `💚 SESSION ACTIVE`,
+  };
+
+  const details = {
+    start: `New session initiated for "${username}"`,
+    resume: `Existing session resumed for "${username}"`,
+    expire: `Session timed out for "${username}"`,
+    active: `Session heartbeat for "${username}"`,
   };
   
   return addLog({
@@ -346,28 +496,66 @@ export function logSession(action: 'start' | 'resume' | 'expire', username: stri
     action: 'SESSION',
     message: messages[action],
     user: username,
-    details: `Session ID: ${clientMeta?.sessionId || 'N/A'}`,
+    details: `${details[action]} | Session: ${clientMeta?.sessionId || 'N/A'}`,
     metadata: {
       ...clientMeta,
     }
   });
 }
 
-export function logAccess(endpoint: string, method: string, statusCode: number, username?: string): AdminLog {
+export function logAccess(endpoint: string, method: string, statusCode: number, username?: string, responseTime?: number): AdminLog {
   const clientMeta = getClientMetadata();
   const isSuccess = statusCode >= 200 && statusCode < 300;
   
   return addLog({
     type: isSuccess ? 'info' : 'error',
-    action: 'ACCESS',
-    message: `${method} ${endpoint} → ${statusCode}`,
+    action: 'API',
+    message: `🌐 API ${method} ${endpoint} → ${statusCode}`,
     user: username,
-    details: `API request ${isSuccess ? 'completed' : 'failed'}`,
+    details: `${isSuccess ? 'Request completed' : 'Request failed'} in ${responseTime || 0}ms`,
     metadata: {
       ...clientMeta,
       endpoint,
       method,
       statusCode,
+      responseTime: responseTime ? `${responseTime}ms` : undefined,
+      requestId: `REQ_${Date.now().toString(36).toUpperCase()}`,
+    }
+  });
+}
+
+export function logSecurity(event: string, username?: string, details?: string, severity: 'low' | 'medium' | 'high' | 'critical' = 'medium'): AdminLog {
+  const clientMeta = getClientMetadata();
+  const severityIcons = {
+    low: '🟡',
+    medium: '🟠', 
+    high: '🔴',
+    critical: '🚨',
+  };
+  
+  return addLog({
+    type: severity === 'critical' ? 'critical' : severity === 'high' ? 'error' : 'warning',
+    action: 'SECURITY',
+    message: `${severityIcons[severity]} SECURITY: ${event}`,
+    user: username,
+    details: details || `Security event detected`,
+    metadata: {
+      ...clientMeta,
+    }
+  });
+}
+
+export function logError(error: string, stack?: string, username?: string): AdminLog {
+  const clientMeta = getClientMetadata();
+  return addLog({
+    type: 'error',
+    action: 'ERROR',
+    message: `🚨 ERROR: ${error}`,
+    user: username,
+    details: stack || error,
+    metadata: {
+      ...clientMeta,
+      errorStack: stack,
     }
   });
 }
@@ -381,14 +569,41 @@ function formatBytes(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-// Fetch IP address from external service
-export async function fetchClientIP(): Promise<string> {
+// Fetch IP address and location from external service
+export async function fetchClientIP(): Promise<{ ip: string; location?: string; country?: string; city?: string; timezone?: string }> {
   try {
-    const response = await fetch('https://api.ipify.org?format=json');
-    const data = await response.json();
-    return data.ip;
+    // Try to get detailed IP info
+    const response = await fetch('https://ipapi.co/json/');
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        ip: data.ip,
+        location: `${data.city}, ${data.region}, ${data.country_name}`,
+        country: data.country_name,
+        city: data.city,
+        timezone: data.timezone,
+      };
+    }
   } catch {
-    return 'Unable to fetch';
+    // Fallback to simple IP
+    try {
+      const response = await fetch('https://api.ipify.org?format=json');
+      const data = await response.json();
+      return { ip: data.ip };
+    } catch {
+      return { ip: 'Unable to fetch' };
+    }
+  }
+  return { ip: 'Unable to fetch' };
+}
+
+// Initialize system log on load
+export function initializeLogs(username?: string): void {
+  loadLogs();
+  if (username) {
+    logSystem('ADMIN PANEL INITIALIZED', 'info', `System ready for ${username}`, {
+      pageUrl: typeof window !== 'undefined' ? window.location.href : undefined,
+    });
   }
 }
 

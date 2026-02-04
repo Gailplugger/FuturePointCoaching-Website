@@ -2,41 +2,56 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Server, AlertTriangle, CreditCard, Clock } from 'lucide-react';
+import { X, Server, AlertTriangle, CreditCard, Clock, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 interface ServerMaintenancePopupProps {
   onClose?: () => void;
   delayMs?: number;
+  showImmediately?: boolean;
 }
 
 const POPUP_DISMISSED_KEY = 'fp_maintenance_dismissed';
+const SHOW_MAINTENANCE_KEY = 'fp_show_maintenance';
 const DISMISS_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 export function ServerMaintenancePopup({ 
   onClose, 
-  delayMs = 3000 
+  delayMs = 3000,
+  showImmediately = false
 }: ServerMaintenancePopupProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
 
   useEffect(() => {
-    // Check if popup was recently dismissed
-    const dismissedAt = localStorage.getItem(POPUP_DISMISSED_KEY);
-    if (dismissedAt) {
-      const dismissTime = parseInt(dismissedAt, 10);
-      if (Date.now() - dismissTime < DISMISS_DURATION) {
-        return; // Don't show popup if dismissed within last 24 hours
+    // Check if we should show immediately (just logged in)
+    const shouldShowNow = sessionStorage.getItem(SHOW_MAINTENANCE_KEY) === 'true';
+    
+    // Check if popup was recently dismissed (only if not showing immediately from login)
+    if (!shouldShowNow && !showImmediately) {
+      const dismissedAt = localStorage.getItem(POPUP_DISMISSED_KEY);
+      if (dismissedAt) {
+        const dismissTime = parseInt(dismissedAt, 10);
+        if (Date.now() - dismissTime < DISMISS_DURATION) {
+          return; // Don't show popup if dismissed within last 24 hours
+        }
       }
     }
 
-    // Show popup after delay
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, delayMs);
+    // Clear the flag after checking
+    sessionStorage.removeItem(SHOW_MAINTENANCE_KEY);
 
-    return () => clearTimeout(timer);
-  }, [delayMs]);
+    // Show popup - immediately if just logged in, otherwise after delay
+    if (shouldShowNow || showImmediately) {
+      // Small delay just for animation to look smooth
+      setTimeout(() => setIsVisible(true), 500);
+    } else {
+      const timer = setTimeout(() => {
+        setIsVisible(true);
+      }, delayMs);
+      return () => clearTimeout(timer);
+    }
+  }, [delayMs, showImmediately]);
 
   const handleClose = () => {
     setIsVisible(false);

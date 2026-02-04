@@ -12,18 +12,36 @@ import { PageTransition, SlideUp } from '@/components/motion';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { logLogin, logSystem, logSession, fetchClientIP, logLoginAttempt } from '@/lib/adminLogs';
+import { logLogin, logSystem, logSession, fetchClientIP, logLoginAttempt, logSecurity, initializeLogs } from '@/lib/adminLogs';
+
+interface IPData {
+  ip: string;
+  location?: string;
+  country?: string;
+  city?: string;
+  timezone?: string;
+}
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [showToken, setShowToken] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [clientIP, setClientIP] = useState<string>('Detecting...');
+  const [ipData, setIpData] = useState<IPData>({ ip: 'Detecting...' });
 
-  // Fetch client IP on mount
+  // Fetch client IP and location on mount
   useEffect(() => {
-    fetchClientIP().then(ip => setClientIP(ip));
+    initializeLogs();
+    fetchClientIP().then(data => {
+      setIpData(data);
+      logSystem('LOGIN PAGE LOADED', 'info', `Visitor from ${data.ip} ${data.location ? `(${data.location})` : ''}`, {
+        ip: data.ip,
+        location: data.location,
+        country: data.country,
+        city: data.city,
+        timezone: data.timezone,
+      });
+    });
   }, []);
 
   const {
@@ -35,37 +53,75 @@ export default function AdminLoginPage() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
+    const startTime = Date.now();
     try {
       setIsLoading(true);
       setError(null);
 
-      // Log login attempt
-      logSystem(`Login attempt initiated for ${data.username}`, 'info', `IP: ${clientIP}`);
+      // Log login attempt with full details
+      logSystem(`🔄 LOGIN ATTEMPT INITIATED`, 'info', 
+        `Username: "${data.username}" | IP: ${ipData.ip} | Location: ${ipData.location || 'Unknown'} | Time: ${new Date().toLocaleString()}`,
+        { ip: ipData.ip, location: ipData.location, country: ipData.country, city: ipData.city }
+      );
 
       const response = await adminLogin(data.username, data.token);
+      const responseTime = Date.now() - startTime;
 
       if (response.success) {
-        // Store token in sessionStorage for subsequent API calls
+        // Store token and user data
         sessionStorage.setItem('github_token', data.token);
         sessionStorage.setItem('admin_user', JSON.stringify(response.user));
         sessionStorage.setItem('fp_login_time', Date.now().toString());
+        // Flag to show maintenance popup immediately after login
+        sessionStorage.setItem('fp_show_maintenance', 'true');
 
-        // Log successful login with IP and details
-        logLogin(response.user.username, clientIP);
+        // Log successful login with comprehensive details
+        logLogin(response.user.username, ipData.ip, response.user.isSuperAdmin, {
+          location: ipData.location,
+          country: ipData.country,
+          city: ipData.city,
+          timezone: ipData.timezone,
+          responseTime: `${responseTime}ms`,
+        });
+        
         logSession('start', response.user.username);
+        
         logSystem(
-          `Admin panel access granted to ${response.user.username}`,
+          `🎉 ADMIN PANEL ACCESS GRANTED`,
           'success',
-          `Role: ${response.user.isSuperAdmin ? 'Super Admin' : 'Admin'} | IP: ${clientIP}`
+          `User: "${response.user.username}" | Role: ${response.user.isSuperAdmin ? 'SUPER ADMIN' : 'ADMIN'} | IP: ${ipData.ip} | Location: ${ipData.location || 'Unknown'} | Response: ${responseTime}ms`,
+          { 
+            ip: ipData.ip, 
+            isSuperAdmin: response.user.isSuperAdmin,
+            role: response.user.isSuperAdmin ? 'SUPER ADMIN' : 'ADMIN',
+            responseTime: `${responseTime}ms`,
+            location: ipData.location,
+          }
         );
 
         router.push('/admin/dashboard');
       }
     } catch (err) {
+      const responseTime = Date.now() - startTime;
       const errorMessage = err instanceof Error ? err.message : 'Login failed. Please try again.';
-      // Log failed login attempt with details
-      logLoginAttempt(data.username, false, clientIP, errorMessage);
-      logSystem(`Authentication rejected for ${data.username}`, 'error', `Reason: ${errorMessage} | IP: ${clientIP}`);
+      
+      // Log failed login attempt with full details
+      logLoginAttempt(data.username, false, ipData.ip, errorMessage);
+      
+      logSecurity(
+        `FAILED LOGIN ATTEMPT`,
+        data.username,
+        `Username: "${data.username}" | Error: ${errorMessage} | IP: ${ipData.ip} | Location: ${ipData.location || 'Unknown'} | Response: ${responseTime}ms`,
+        'medium'
+      );
+      
+      logSystem(
+        `❌ AUTHENTICATION REJECTED`,
+        'error',
+        `User: "${data.username}" | Reason: ${errorMessage} | IP: ${ipData.ip} | Time: ${new Date().toLocaleString()}`,
+        { ip: ipData.ip, statusCode: 401, responseTime: `${responseTime}ms` }
+      );
+      
       setError(errorMessage);
     } finally {
       setIsLoading(false);
